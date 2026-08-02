@@ -2,11 +2,12 @@ function doGet() {
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('نظام إدارة مؤسسة حسن خالد حسن فران للمقاولات')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no')
+    .addMetaTag('mobile-web-app-capable', 'yes')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// تهيئة الجداول وبنية شيتات البيانات
+// تهيئة الجداول وتحديث الأعمدة
 function setupDatabase() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = [
@@ -14,8 +15,8 @@ function setupDatabase() {
     { name: 'المصروفات', headers: ['ID', 'كود المشروع', 'بند المصروف', 'المبلغ', 'التاريخ', 'ملاحظات', 'رابط الفاتورة'] },
     { name: 'الموظفين', headers: ['ID', 'رقم الموظف', 'اسم الموظف', 'رقم الهوية', 'تاريخ الميلاد', 'فصيلة الدم', 'تاريخ انتهاء الإقامة', 'المهنة', 'الراتب الأساسي'] },
     { name: 'مسير الرواتب', headers: ['ID', 'رقم الموظف', 'اسم الموظف', 'الشهر/السنة', 'الراتب الأساسي', 'الخصومات', 'الإضافي', 'صافي الراتب', 'حالة الصرف', 'تاريخ الصرف'] },
-    { name: 'العقود والخطابات', headers: ['ID', 'اسم الخطاب', 'الجهة', 'تاريخ الخطاب', 'رابط الملف'] },
-    { name: 'وثائق المؤسسة', headers: ['ID', 'اسم الوثيقة', 'تاريخ الانتهاء', 'رابط الوثيقة'] },
+    { name: 'العقود والخطابات', headers: ['ID', 'اسم العقد', 'الطرف الثاني', 'التاريخ', 'رابط المستند'] },
+    { name: 'وثائق الشركة', headers: ['ID', 'اسم الوثيقة', 'رقم الوثيقة', 'تاريخ الانتهاء', 'رابط المستند'] },
     { name: 'المستخدمين', headers: ['ID', 'الاسم', 'البريد الإلكتروني', 'كلمة المرور', 'الدور'] }
   ];
 
@@ -31,7 +32,7 @@ function setupDatabase() {
   return { status: 'success', message: 'تمت تهيئة الجداول بنجاح' };
 }
 
-// رفع الملفات إلى Google Drive وإرجاع الرابط
+// دالة رفع الملفات إلى Google Drive وإرجاع الرابط
 function uploadFileToDrive(fileData) {
   try {
     const folderName = "فواتير ومستندات المؤسسة";
@@ -61,7 +62,7 @@ function loginUser(email, password) {
   return { success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
 }
 
-// جلب البيانات من أي جدول
+// جلب البيانات من أي شيت
 function getData(sheetName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
@@ -86,68 +87,53 @@ function getData(sheetName) {
 
 // حفظ أو تعديل سجل
 function saveRecord(sheetName, record) {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName(sheetName);
-    if (!sheet) {
-      setupDatabase();
-      sheet = ss.getSheetByName(sheetName);
-    }
-    
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0];
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
 
-    if (record['ID']) {
-      const idIndex = headers.indexOf('ID');
-      for (let i = 1; i < data.length; i++) {
-        if (String(data[i][idIndex]) === String(record['ID'])) {
-          headers.forEach((h, colIndex) => {
-            if (record[h] !== undefined) {
-              sheet.getRange(i + 1, colIndex + 1).setValue(record[h]);
-            }
-          });
-          return { success: true, message: 'تم تحديث البيانات بنجاح' };
-        }
+  if (record['ID']) {
+    const idIndex = headers.indexOf('ID');
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][idIndex]) === String(record['ID'])) {
+        headers.forEach((h, colIndex) => {
+          if (record[h] !== undefined) {
+            sheet.getRange(i + 1, colIndex + 1).setValue(record[h]);
+          }
+        });
+        return { success: true, message: 'تم تحديث البيانات بنجاح' };
       }
     }
-
-    record['ID'] = 'ID-' + new Date().getTime();
-    const rowToAppend = headers.map(h => record[h] !== undefined ? record[h] : '');
-    sheet.appendRow(rowToAppend);
-    return { success: true, message: 'تم الحفظ بنجاح' };
-  } catch (err) {
-    return { success: false, message: err.toString() };
   }
+
+  record['ID'] = 'ID-' + new Date().getTime();
+  const rowToAppend = headers.map(h => record[h] !== undefined ? record[h] : '');
+  sheet.appendRow(rowToAppend);
+  return { success: true, message: 'تم الحفظ بنجاح' };
 }
 
 // حذف سجل
 function deleteRecord(sheetName, id) {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName(sheetName);
-    if (!sheet) return { success: false, message: 'الجدول غير موجود' };
-    
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0];
-    const idIndex = headers.indexOf('ID');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const idIndex = headers.indexOf('ID');
 
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][idIndex]) === String(id)) {
-        sheet.deleteRow(i + 1);
-        return { success: true, message: 'تم الحذف بنجاح' };
-      }
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][idIndex]) === String(id)) {
+      sheet.deleteRow(i + 1);
+      return { success: true, message: 'تم الحذف بنجاح' };
     }
-    return { success: false, message: 'لم يتم العثور على السجل' };
-  } catch (err) {
-    return { success: false, message: err.toString() };
   }
+  return { success: false, message: 'لم يتم العثور على السجل' };
 }
 
-// إحصائيات لوحة التحكم
+// بيانات لوحة التحكم
 function getDashboardData() {
   const projects = getData('المشاريع');
   const expenses = getData('المصروفات');
-  const docs = getData('وثائق المؤسسة');
+  const docs = getData('وثائق الشركة');
   const employees = getData('الموظفين');
 
   let totalContractValue = 0;
@@ -188,4 +174,14 @@ function getDashboardData() {
     expiringIqamas,
     projects
   };
+}
+
+// حفظ أو تحديث حالة اعتماد مسير الرواتب
+function savePayrollRecord(record) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('مسير الرواتب');
+  if (!sheet) {
+    setupDatabase();
+  }
+  return saveRecord('مسير الرواتب', record);
 }
