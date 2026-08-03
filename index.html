@@ -677,20 +677,31 @@
       }
     });
 
-  async function handleLogin(event) {
+ async function handleLogin(event) {
   event.preventDefault();
   
-  const email = document.getElementById('loginEmail').value;
-const password = document.getElementById('loginPassword').value;
+  const emailInput = document.getElementById('loginEmail') || document.getElementById('emailInput');
+  const passwordInput = document.getElementById('loginPassword') || document.getElementById('passwordInput');
+
+  if (!emailInput || !passwordInput) {
+    alert("خطأ: لم يتم العثور على حقول الإدخال في الصفحة");
+    return;
+  }
+
   const scriptURL = 'https://script.google.com/macros/s/AKfycbypJX-l1k2n93kTHv-wqs9nr7QrZEXXu4i0zMExLOTZEiN2IH3KqcrylIHRt8hycY5ayA/exec';
 
   try {
+    // إرسال الطلب بدون headers معقدة لتجنب حظر CORS
     const response = await fetch(scriptURL, {
       method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
       body: JSON.stringify({
         action: 'login',
-        email: email,
-        password: password
+        email: emailInput.value,
+        password: passwordInput.value
       })
     });
 
@@ -700,11 +711,11 @@ const password = document.getElementById('loginPassword').value;
       document.getElementById('loginScreen').classList.add('hidden');
       document.getElementById('mainApp').classList.remove('hidden');
     } else {
-      alert('اسم المستخدم أو كلمة المرور غير صحيحة');
+      alert(result.message || 'اسم المستخدم أو كلمة المرور غير صحيحة');
     }
   } catch (error) {
     console.error('Error during login:', error);
-    alert('حدث خطأ أثناء الاتصال بالسيرفر');
+    alert('حدث خطأ أثناء الاتصال بالسيرفر، تأكد من إعدادات النشر على Google Apps Script');
   }
 }
     function switchTab(tabId) {
