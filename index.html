@@ -1041,45 +1041,83 @@
     }
 
     // --- المصروفات ---
-    async function loadExpenses() {
-      const projects = await apiFetch('getData', { sheetName: 'المشاريع' });
-      const select = document.getElementById('e_projectCode');
-      select.innerHTML = '<option value="">اختر المشروع</option>';
-      (projects || []).forEach(p => {
-        select.innerHTML += `<option value="${p['كود المشروع']}">${p['كود المشروع']} - ${p['اسم المشروع']}</option>`;
-      });
-
-      const expenses = await apiFetch('getData', { sheetName: 'المصروفات' });
-      allExpenses = expenses || [];
-      const tbody = document.getElementById('expensesTableBody');
-      tbody.innerHTML = '';
-      allExpenses.forEach(e => {
-        const fileBtn = e['رابط الفاتورة'] 
-          ? `<a href="${e['رابط الفاتورة']}" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-bold text-xs"><i class="fa-solid fa-paperclip"></i> المعاينة</a>`
-          : `<span class="text-slate-400 text-xs font-bold">لا يوجد</span>`;
-
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50 font-semibold">
-            <td class="p-4 font-bold text-blue-600">${e['كود المشروع']}</td>
-            <td class="p-4">${e['بند المصروف']}</td>
-            <td class="p-4 text-rose-600 font-bold">${(parseFloat(e['المبلغ'])||0).toLocaleString()} ر.س</td>
-            <td class="p-4">${e['التاريخ']}</td>
-            <td class="p-4 text-xs text-slate-500 max-w-xs truncate">${e['ملاحظات'] || '-'}</td>
-            <td class="p-4 text-center">${fileBtn}</td>
-            <td class="p-4 text-center">
-              <div class="flex items-center justify-center gap-2">
-                <button onclick="editExpense('${e['ID']}')" title="تعديل المصروف" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-pen-to-square text-xs"></i>
-                </button>
-                <button onclick="deleteExpense('${e['ID']}')" title="حذف المصروف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-trash text-xs"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      });
+    function loadExpenses() {
+  // 1. جلب قائمة المشاريع للقائمة المنسدلة
+  google.script.run.withSuccessHandler(response => {
+    let projects = response;
+    
+    // فك النص إذا كانت البيانات قادمة كـ String
+    if (typeof projects === 'string') {
+      try { projects = JSON.parse(projects); } catch (e) { projects = []; }
     }
+    
+    // استخراج المصفوفة إذا كانت ملفوفة داخل Object
+    if (projects && !Array.isArray(projects) && Array.isArray(projects.data)) {
+      projects = projects.data;
+    }
+
+    const select = document.getElementById('e_projectCode');
+    if (select) {
+      select.innerHTML = '<option value="">اختر المشروع</option>';
+      if (Array.isArray(projects)) {
+        projects.forEach(p => {
+          select.innerHTML += `<option value="${p['كود المشروع']}">${p['كود المشروع']} - ${p['اسم المشروع']}</option>`;
+        });
+      }
+    }
+  }).getData('المشاريع');
+
+  // 2. جلب قائمة المصروفات للجدول
+  google.script.run.withSuccessHandler(response => {
+    let expenses = response;
+
+    // فك النص إذا كانت البيانات قادمة كـ String
+    if (typeof expenses === 'string') {
+      try { expenses = JSON.parse(expenses); } catch (e) { expenses = []; }
+    }
+
+    // استخراج المصفوفة إذا كانت ملفوفة داخل Object
+    if (expenses && !Array.isArray(expenses) && Array.isArray(expenses.data)) {
+      expenses = expenses.data;
+    }
+
+    allExpenses = Array.isArray(expenses) ? expenses : [];
+    const tbody = document.getElementById('expensesTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+
+    allExpenses.forEach(e => {
+      // التحقق من وجود رابط الفاتورة بأكثر من مسمى محتمل
+      const fileUrl = e['رابط الفاتورة'] || e['الفاتورة'] || e['e_existing_file'];
+      
+      const fileBtn = fileUrl 
+        ? `<a href="${fileUrl}" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-bold text-xs"><i class="fa-solid fa-paperclip"></i> المعاينة</a>`
+        : `<span class="text-slate-400 text-xs font-bold">لا يوجد</span>`;
+
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 font-semibold">
+          <td class="p-4 font-bold text-blue-600">${e['كود المشروع'] || '-'}</td>
+          <td class="p-4">${e['بند المصروف'] || '-'}</td>
+          <td class="p-4 text-rose-600 font-bold">${(parseFloat(e['المبلغ'])||0).toLocaleString()} ر.س</td>
+          <td class="p-4">${e['التاريخ'] || '-'}</td>
+          <td class="p-4 text-xs text-slate-500 max-w-xs truncate">${e['ملاحظات'] || '-'}</td>
+          <td class="p-4 text-center">${fileBtn}</td>
+          <td class="p-4 text-center">
+            <div class="flex items-center justify-center gap-2">
+              <button onclick="editExpense('${e['ID']}')" title="تعديل المصروف" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
+                <i class="fa-solid fa-pen-to-square text-xs"></i>
+              </button>
+              <button onclick="deleteExpense('${e['ID']}')" title="حذف المصروف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
+                <i class="fa-solid fa-trash text-xs"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+  }).getData('المصروفات');
+}
 
     function openNewExpenseModal() {
       document.getElementById('e_id').value = '';
