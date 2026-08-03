@@ -3,12 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Data URI Manifest لإخفاء الشريط بدون ملف خارجي -->
-<link rel="manifest" href="manifest.json">
-
-<!-- لدعم أجهزة iOS (iPhone/iPad) -->
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>نظام إدارة مؤسسة حسن خالد حسن فران للمقاولات</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -29,7 +26,7 @@
           <i class="fa-solid fa-building-user"></i>
         </div>
         <h1 class="text-xl font-black text-slate-800">مؤسسة حسن خالد حسن فران</h1>
-        <p class="text-sm text-slate-500 font-bold mt-1">ل للمقاولات العامة</p>
+        <p class="text-sm text-slate-500 font-bold mt-1">للمقاولات العامة</p>
       </div>
       <form onsubmit="handleLoginProcess(event)" class="space-y-4">
         <div>
@@ -638,12 +635,56 @@
     let allUsers = [];
     let chartInstance = null;
 
-    // استعادة الجلسة والتبويب عند بداية التحميل (Refresh)
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-xVuOb09mAWQanMzza9XesdWlK8eJgT8ZuHxValLm-qqHnfhhVA/exec";
+
+    // محاكاة أو ربط بين البيئتين (جوجل و GitHub)
+    async function callBackend(functionName, ...args) {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        return new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)[functionName](...args);
+        });
+      } else {
+        // الاتصال عبر API الخارجية لبيئة GitHub
+        let url = SCRIPT_URL;
+        let options = {};
+
+        if (functionName === 'getDashboardData') {
+          url += '?action=getDashboard';
+          options = { method: 'GET' };
+        } else if (functionName === 'getData') {
+          url += '?action=getData&sheetName=' + encodeURIComponent(args[0]);
+          options = { method: 'GET' };
+        } else if (functionName === 'checkLogin') {
+          url += '?action=checkLogin&email=' + encodeURIComponent(args[0]) + '&password=' + encodeURIComponent(args[1]);
+          options = { method: 'GET' };
+        } else if (functionName === 'saveRecord') {
+          options = {
+            method: 'POST',
+            body: JSON.stringify({ action: 'saveRecord', sheetName: args[0], record: args[1] })
+          };
+        } else if (functionName === 'deleteRecord') {
+          options = {
+            method: 'POST',
+            body: JSON.stringify({ action: 'deleteRecord', sheetName: args[0], id: args[1] })
+          };
+        } else if (functionName === 'uploadFileToDrive') {
+          options = {
+            method: 'POST',
+            body: JSON.stringify({ action: 'uploadFile', fileData: args[0] })
+          };
+        }
+
+        const res = await fetch(url, options);
+        return await res.json();
+      }
+    }
+
+    // استعادة الجلسة والتبويب عند بداية التحميل
     window.addEventListener('DOMContentLoaded', () => {
       const savedUser = localStorage.getItem('app_user');
       const savedTab = localStorage.getItem('app_tab') || 'dashboard';
-      // تعريف رابط Google Apps Script Web App
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-xVuOb09mAWQanMzza9XesdWlK8eJgT8ZuHxValLm-qqHnfhhVA/exec";
 
       if (savedUser) {
         currentUser = JSON.parse(savedUser);
@@ -655,7 +696,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
     });
 
     // 1. معالجة عملية تسجيل الدخول
-    function handleLoginProcess(event) {
+    async function handleLoginProcess(event) {
       if(event) event.preventDefault();
 
       const emailInput = document.getElementById('loginEmail')?.value.trim();
@@ -672,54 +713,35 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
         loginBtn.disabled = true;
       }
 
-      // الاتصال بالخلفية للتحقق عبر Google Apps Script
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run
-          .withSuccessHandler(res => {
-            if (loginBtn) {
-              loginBtn.innerText = "تسجيل الدخول";
-              loginBtn.disabled = false;
-            }
+      try {
+        const res = await callBackend('checkLogin', emailInput, passwordInput);
+        if (loginBtn) {
+          loginBtn.innerText = "تسجيل الدخول";
+          loginBtn.disabled = false;
+        }
 
-            if (res && res.success) {
-              currentUser = res.user || { email: emailInput, role: 'مدير النظام' };
-              localStorage.setItem('app_user', JSON.stringify(currentUser));
-              
-              document.getElementById('loginScreen').classList.add('hidden');
-              document.getElementById('appScreen').classList.remove('hidden');
-              document.getElementById('userRoleBadge').innerText = currentUser.role || 'مدير النظام';
-              
-              switchTab('dashboard');
-            } else {
-              alert(res && res.message ? res.message : "بيانات الدخول غير صحيحة.");
-            }
-          })
-          .withFailureHandler(err => {
-            if (loginBtn) {
-              loginBtn.innerText = "تسجيل الدخول";
-              loginBtn.disabled = false;
-            }
-            // تسجيل دخول افتراضي في حال عدم وجود الربط البرمجي بالخلفية بعد
-            currentUser = { email: emailInput, role: 'مدير النظام' };
-            localStorage.setItem('app_user', JSON.stringify(currentUser));
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('appScreen').classList.remove('hidden');
-            switchTab('dashboard');
-          })
-          .checkLogin(emailInput, passwordInput);
-      } else {
-        // الوضع الاحتياطي الواجهي (Demo Fallback)
-        setTimeout(() => {
-          if (loginBtn) {
-            loginBtn.innerText = "تسجيل الدخول";
-            loginBtn.disabled = false;
-          }
-          currentUser = { email: emailInput, role: 'مدير النظام' };
+        if (res && res.success) {
+          currentUser = res.user || { email: emailInput, role: 'مدير النظام' };
           localStorage.setItem('app_user', JSON.stringify(currentUser));
+          
           document.getElementById('loginScreen').classList.add('hidden');
           document.getElementById('appScreen').classList.remove('hidden');
+          document.getElementById('userRoleBadge').innerText = currentUser.role || 'مدير النظام';
+          
           switchTab('dashboard');
-        }, 500);
+        } else {
+          alert(res && res.message ? res.message : "بيانات الدخول غير صحيحة.");
+        }
+      } catch(err) {
+        if (loginBtn) {
+          loginBtn.innerText = "تسجيل الدخول";
+          loginBtn.disabled = false;
+        }
+        currentUser = { email: emailInput, role: 'مدير النظام' };
+        localStorage.setItem('app_user', JSON.stringify(currentUser));
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('appScreen').classList.remove('hidden');
+        switchTab('dashboard');
       }
     }
 
@@ -757,10 +779,11 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
     // --- Dashboard & Charts ---
-    function loadDashboard() {
-      if (typeof google === 'undefined' || !google.script) return;
-      google.script.run.withSuccessHandler(data => {
+    async function loadDashboard() {
+      try {
+        const data = await callBackend('getDashboardData');
         if (!data || !data.stats) return;
+
         document.getElementById('statTotalContract').innerText = (data.stats.totalContractValue || 0).toLocaleString() + ' ر.س';
         document.getElementById('statCollected').innerText = (data.stats.totalCollected || 0).toLocaleString() + ' ر.س';
         document.getElementById('statRemaining').innerText = (data.stats.totalRemaining || 0).toLocaleString() + ' ر.س';
@@ -773,7 +796,9 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
 
         const iqamaList = document.getElementById('alertIqamaList');
         iqamaList.innerHTML = (data.expiringIqamas && data.expiringIqamas.length) ? data.expiringIqamas.map(i => `<li class="p-2 bg-rose-50 text-rose-800 rounded-lg font-bold">👤 ${i['اسم الموظف']} (${i['تاريخ انتهاء الإقامة']})</li>`).join('') : '<p class="text-slate-400">جميع الإقامات سارية</p>';
-      }).getDashboardData();
+      } catch(e) {
+        console.error(e);
+      }
     }
 
     function renderChart(stats) {
@@ -800,15 +825,14 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
     }
 
     // --- Projects logic ---
-    function loadProjects() {
-      if (typeof google === 'undefined' || !google.script) return;
-      google.script.run.withSuccessHandler(projects => {
-        allProjects = projects || [];
-        google.script.run.withSuccessHandler(expenses => {
-          allExpenses = expenses || [];
-          renderProjectCards();
-        }).getData('المصروفات');
-      }).getData('المشاريع');
+    async function loadProjects() {
+      try {
+        allProjects = await callBackend('getData', 'المشاريع') || [];
+        allExpenses = await callBackend('getData', 'المصروفات') || [];
+        renderProjectCards();
+      } catch(e) {
+        console.error(e);
+      }
     }
 
     function renderProjectCards() {
@@ -967,7 +991,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
       openModal('projectModal');
     }
 
-    function saveProjectForm(e) {
+    async function saveProjectForm(e) {
       e.preventDefault();
 
       const record = {
@@ -984,22 +1008,16 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
         'حالة المشروع': document.getElementById('p_status').value
       };
 
-      if (typeof google !== 'undefined' && google.script) {
-        google.script.run.withSuccessHandler(res => {
-          closeModal('projectModal');
-          loadProjects();
-        }).saveRecord('المشاريع', record);
-      }
+      await callBackend('saveRecord', 'المشاريع', record);
+      closeModal('projectModal');
+      loadProjects();
     }
 
-    function deleteProject(id) {
+    async function deleteProject(id) {
       if (confirm('هل أنت تأكد من إزالة هذا المشروع من القائمة؟')) {
-        if (typeof google !== 'undefined' && google.script) {
-          google.script.run.withSuccessHandler(res => {
-            closeModal('projectDetailsModal');
-            loadProjects();
-          }).deleteRecord('المشاريع', id);
-        }
+        await callBackend('deleteRecord', 'المشاريع', id);
+        closeModal('projectDetailsModal');
+        loadProjects();
       }
     }
 
@@ -1069,18 +1087,16 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
     }
 
     // --- المصروفات ---
-    function loadExpenses() {
-      if (typeof google === 'undefined' || !google.script) return;
-      google.script.run.withSuccessHandler(projects => {
+    async function loadExpenses() {
+      try {
+        const projects = await callBackend('getData', 'المشاريع') || [];
         const select = document.getElementById('e_projectCode');
         select.innerHTML = '<option value="">اختر المشروع</option>';
-        (projects || []).forEach(p => {
+        projects.forEach(p => {
           select.innerHTML += `<option value="${p['كود المشروع']}">${p['كود المشروع']} - ${p['اسم المشروع']}</option>`;
         });
-      }).getData('المشاريع');
 
-      google.script.run.withSuccessHandler(expenses => {
-        allExpenses = expenses || [];
+        allExpenses = await callBackend('getData', 'المصروفات') || [];
         const tbody = document.getElementById('expensesTableBody');
         tbody.innerHTML = '';
         allExpenses.forEach(e => {
@@ -1109,7 +1125,9 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
             </tr>
           `;
         });
-      }).getData('المصروفات');
+      } catch(e) {
+        console.error(e);
+      }
     }
 
     function openNewExpenseModal() {
@@ -1156,13 +1174,10 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
       openModal('expenseModal');
     }
 
-    function deleteExpense(id) {
+    async function deleteExpense(id) {
       if (confirm('هل أنت تأكد من إزالة هذا المصروف؟')) {
-        if (typeof google !== 'undefined' && google.script) {
-          google.script.run.withSuccessHandler(res => {
-            loadExpenses();
-          }).deleteRecord('المصروفات', id);
-        }
+        await callBackend('deleteRecord', 'المصروفات', id);
+        loadExpenses();
       }
     }
 
@@ -1176,16 +1191,14 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
       const fileInput = document.getElementById('e_file');
       let fileUrl = document.getElementById('e_existing_file').value;
 
-      if (fileInput.files.length > 0 && typeof google !== 'undefined' && google.script) {
+      if (fileInput.files.length > 0) {
         const file = fileInput.files[0];
         const base64Data = await convertFileToBase64(file);
         
-        const uploadRes = await new Promise(resolve => {
-          google.script.run.withSuccessHandler(resolve).uploadFileToDrive({
-            fileName: file.name,
-            mimeType: file.type,
-            data: base64Data
-          });
+        const uploadRes = await callBackend('uploadFileToDrive', {
+          fileName: file.name,
+          mimeType: file.type,
+          data: base64Data
         });
 
         if (uploadRes && uploadRes.success) {
@@ -1208,14 +1221,11 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
         'رابط الفاتورة': fileUrl
       };
 
-      if (typeof google !== 'undefined' && google.script) {
-        google.script.run.withSuccessHandler(res => {
-          submitBtn.disabled = false;
-          submitBtn.innerText = 'حفظ البيانات';
-          closeModal('expenseModal');
-          loadExpenses();
-        }).saveRecord('المصروفات', record);
-      }
+      await callBackend('saveRecord', 'المصروفات', record);
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'حفظ البيانات';
+      closeModal('expenseModal');
+      loadExpenses();
     }
 
     function convertFileToBase64(file) {
@@ -1228,10 +1238,9 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
     }
 
     // --- الموظفين والرواتب ---
-    function loadEmployees() {
-      if (typeof google === 'undefined' || !google.script) return;
-      google.script.run.withSuccessHandler(employees => {
-        allEmployees = employees || [];
+    async function loadEmployees() {
+      try {
+        allEmployees = await callBackend('getData', 'الموظفين') || [];
         const tbody = document.getElementById('employeesTableBody');
         tbody.innerHTML = '';
 
@@ -1278,7 +1287,9 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
             </tr>
           `;
         });
-      }).getData('الموظفين');
+      } catch(e) {
+        console.error(e);
+      }
     }
 
     function openNewEmployeeModal() {
@@ -1314,7 +1325,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
       openModal('employeeModal');
     }
 
-    function saveEmployee(e) {
+    async function saveEmployee(e) {
       e.preventDefault();
 
       const record = {
@@ -1329,21 +1340,15 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
         'فصيلة الدم': document.getElementById('emp_blood').value
       };
 
-      if (typeof google !== 'undefined' && google.script) {
-        google.script.run.withSuccessHandler(res => {
-          closeModal('employeeModal');
-          loadEmployees();
-        }).saveRecord('الموظفين', record);
-      }
+      await callBackend('saveRecord', 'الموظفين', record);
+      closeModal('employeeModal');
+      loadEmployees();
     }
 
-    function deleteEmployee(id) {
+    async function deleteEmployee(id) {
       if (confirm('هل أنت تأكد من إزالة هذا الموظف؟')) {
-        if (typeof google !== 'undefined' && google.script) {
-          google.script.run.withSuccessHandler(res => {
-            loadEmployees();
-          }).deleteRecord('الموظفين', id);
-        }
+        await callBackend('deleteRecord', 'الموظفين', id);
+        loadEmployees();
       }
     }
 
@@ -1447,10 +1452,9 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
     }
 
     // --- 5. العقود والخطابات ---
-    function loadLetters() {
-      if (typeof google === 'undefined' || !google.script) return;
-      google.script.run.withSuccessHandler(letters => {
-        allLetters = letters || [];
+    async function loadLetters() {
+      try {
+        allLetters = await callBackend('getData', 'العقود والخطابات') || [];
         const tbody = document.getElementById('lettersTableBody');
         tbody.innerHTML = '';
 
@@ -1484,7 +1488,9 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
             </tr>
           `;
         });
-      }).getData('العقود والخطابات');
+      } catch(e) {
+        console.error(e);
+      }
     }
 
     function openNewLetterModal() {
@@ -1536,15 +1542,13 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
       const fileInput = document.getElementById('l_file');
       let fileUrl = document.getElementById('l_existing_file').value;
 
-      if (fileInput.files.length > 0 && typeof google !== 'undefined' && google.script) {
+      if (fileInput.files.length > 0) {
         const file = fileInput.files[0];
         const base64Data = await convertFileToBase64(file);
-        const uploadRes = await new Promise(resolve => {
-          google.script.run.withSuccessHandler(resolve).uploadFileToDrive({
-            fileName: file.name,
-            mimeType: file.type,
-            data: base64Data
-          });
+        const uploadRes = await callBackend('uploadFileToDrive', {
+          fileName: file.name,
+          mimeType: file.type,
+          data: base64Data
         });
 
         if (uploadRes && uploadRes.success) {
@@ -1565,31 +1569,24 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
         'رابط الملف': fileUrl
       };
 
-      if (typeof google !== 'undefined' && google.script) {
-        google.script.run.withSuccessHandler(res => {
-          submitBtn.disabled = false;
-          submitBtn.innerText = 'حفظ البيانات';
-          closeModal('letterModal');
-          loadLetters();
-        }).saveRecord('العقود والخطابات', record);
-      }
+      await callBackend('saveRecord', 'العقود والخطابات', record);
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'حفظ البيانات';
+      closeModal('letterModal');
+      loadLetters();
     }
 
-    function deleteLetter(id) {
+    async function deleteLetter(id) {
       if (confirm('هل أنت تأكد من إزالة هذا الخطاب / العقد؟')) {
-        if (typeof google !== 'undefined' && google.script) {
-          google.script.run.withSuccessHandler(res => {
-            loadLetters();
-          }).deleteRecord('العقود والخطابات', id);
-        }
+        await callBackend('deleteRecord', 'العقود والخطابات', id);
+        loadLetters();
       }
     }
 
     // --- 6. وثائق المؤسسة ---
-    function loadOrgDocs() {
-      if (typeof google === 'undefined' || !google.script) return;
-      google.script.run.withSuccessHandler(docs => {
-        allOrgDocs = docs || [];
+    async function loadOrgDocs() {
+      try {
+        allOrgDocs = await callBackend('getData', 'وثائق الشركة') || [];
         const container = document.getElementById('orgDocsCardsContainer');
         container.innerHTML = '';
 
@@ -1628,10 +1625,10 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
                 </div>
               </div>
               <div class="pt-3 border-t flex items-center justify-end gap-2">
-                <button onclick="previewFile('${d['رابط الوثيقة']}')" title="معاينة" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold transition flex items-center gap-1">
+                <button onclick="previewFile('${d['رابط المستند'] || d['رابط الوثيقة']}')" title="معاينة" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold transition flex items-center gap-1">
                   <i class="fa-solid fa-eye"></i> معاينة
                 </button>
-                <button onclick="printFile('${d['رابط الوثيقة']}')" title="طباعة" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold transition flex items-center gap-1">
+                <button onclick="printFile('${d['رابط المستند'] || d['رابط الوثيقة']}')" title="طباعة" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold transition flex items-center gap-1">
                   <i class="fa-solid fa-print"></i> طباعة
                 </button>
                 <button onclick="editOrgDoc('${d['ID']}')" title="تعديل" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
@@ -1644,7 +1641,9 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
             </div>
           `;
         });
-      }).getData('وثائق المؤسسة');
+      } catch(e) {
+        console.error(e);
+      }
     }
 
     function openNewOrgDocModal() {
@@ -1667,13 +1666,13 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
       if (!d) return;
 
       document.getElementById('od_id').value = d['ID'];
-      document.getElementById('od_existing_file').value = d['رابط الوثيقة'] || '';
+      document.getElementById('od_existing_file').value = d['رابط المستند'] || d['رابط الوثيقة'] || '';
       document.getElementById('od_title').value = d['اسم الوثيقة'] || '';
       document.getElementById('od_exp_date').value = d['تاريخ الانتهاء'] || '';
       document.getElementById('od_file').value = '';
 
       const notice = document.getElementById('od_existingFileNotice');
-      if (d['رابط الوثيقة']) {
+      if (d['رابط المستند'] || d['رابط الوثيقة']) {
         notice.innerText = '✓ يوجد ملف مرفق سابقاً. ارفع ملف جديد فقط في حال رغبتك باستبداله.';
         notice.classList.remove('hidden');
       } else {
@@ -1694,15 +1693,13 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
       const fileInput = document.getElementById('od_file');
       let fileUrl = document.getElementById('od_existing_file').value;
 
-      if (fileInput.files.length > 0 && typeof google !== 'undefined' && google.script) {
+      if (fileInput.files.length > 0) {
         const file = fileInput.files[0];
         const base64Data = await convertFileToBase64(file);
-        const uploadRes = await new Promise(resolve => {
-          google.script.run.withSuccessHandler(resolve).uploadFileToDrive({
-            fileName: file.name,
-            mimeType: file.type,
-            data: base64Data
-          });
+        const uploadRes = await callBackend('uploadFileToDrive', {
+          fileName: file.name,
+          mimeType: file.type,
+          data: base64Data
         });
 
         if (uploadRes && uploadRes.success) {
@@ -1719,26 +1716,20 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
         'ID': document.getElementById('od_id').value,
         'اسم الوثيقة': document.getElementById('od_title').value.trim(),
         'تاريخ الانتهاء': document.getElementById('od_exp_date').value,
-        'رابط الوثيقة': fileUrl
+        'رابط المستند': fileUrl
       };
 
-      if (typeof google !== 'undefined' && google.script) {
-        google.script.run.withSuccessHandler(res => {
-          submitBtn.disabled = false;
-          submitBtn.innerText = 'حفظ البيانات';
-          closeModal('orgDocModal');
-          loadOrgDocs();
-        }).saveRecord('وثائق المؤسسة', record);
-      }
+      await callBackend('saveRecord', 'وثائق الشركة', record);
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'حفظ البيانات';
+      closeModal('orgDocModal');
+      loadOrgDocs();
     }
 
-    function deleteOrgDoc(id) {
+    async function deleteOrgDoc(id) {
       if (confirm('هل أنت تأكد من إزالة هذه الوثيقة؟')) {
-        if (typeof google !== 'undefined' && google.script) {
-          google.script.run.withSuccessHandler(res => {
-            loadOrgDocs();
-          }).deleteRecord('وثائق المؤسسة', id);
-        }
+        await callBackend('deleteRecord', 'وثائق الشركة', id);
+        loadOrgDocs();
       }
     }
 
@@ -1753,10 +1744,9 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
     }
 
     // --- 7. إدارة المستخدمين ---
-    function loadUsers() {
-      if (typeof google === 'undefined' || !google.script) return;
-      google.script.run.withSuccessHandler(users => {
-        allUsers = users || [];
+    async function loadUsers() {
+      try {
+        allUsers = await callBackend('getData', 'المستخدمين') || [];
         const tbody = document.getElementById('usersTableBody');
         tbody.innerHTML = '';
 
@@ -1784,7 +1774,9 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
             </tr>
           `;
         });
-      }).getData('المستخدمين');
+      } catch(e) {
+        console.error(e);
+      }
     }
 
     function openNewUserModal() {
@@ -1808,11 +1800,11 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
       document.getElementById('u_password').value = u['كلمة المرور'] || '';
       document.getElementById('u_role').value = u['الدور'] || 'مدير النظام';
 
-      document.getElementById('userModalTitle').innerText = 'تعديل مستخدم';
+      document.getElementById('userModalTitle').innerText = 'تعديل بيانات مستخدم';
       openModal('userModal');
     }
 
-    function saveUser(e) {
+    async function saveUser(e) {
       e.preventDefault();
 
       const record = {
@@ -1823,69 +1815,16 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-x
         'الدور': document.getElementById('u_role').value
       };
 
-      if (typeof google !== 'undefined' && google.script) {
-        google.script.run.withSuccessHandler(res => {
-          closeModal('userModal');
-          loadUsers();
-        }).saveRecord('المستخدمين', record);
-      }
+      await callBackend('saveRecord', 'المستخدمين', record);
+      closeModal('userModal');
+      loadUsers();
     }
 
-    function deleteUser(id) {
+    async function deleteUser(id) {
       if (confirm('هل أنت تأكد من إزالة هذا المستخدم؟')) {
-        if (typeof google !== 'undefined' && google.script) {
-          google.script.run.withSuccessHandler(res => {
-            loadUsers();
-          }).deleteRecord('المستخدمين', id);
-        }
+        await callBackend('deleteRecord', 'المستخدمين', id);
+        loadUsers();
       }
-    }
-
-    // --- تجميع وطباعة كافة وثائق المؤسسة ---
-    function printAllOrgDocs() {
-      if (allOrgDocs.length === 0) {
-        alert('لا يوجد وثائق مضافة لطباعتها');
-        return;
-      }
-
-      const printWin = window.open('', '', 'width=900,height=800');
-      let docsHtml = '';
-
-      allOrgDocs.forEach(d => {
-        docsHtml += `
-          <div style="page-break-after: always; margin-bottom: 30px; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px;">
-            <h2 style="font-size: 18px; color: #0f172a; margin-bottom: 10px;">${d['اسم الوثيقة']}</h2>
-            <p style="font-size: 13px; color: #475569; margin-bottom: 15px;">تاريخ الانتهاء: <strong>${d['تاريخ الانتهاء'] || 'غير محدد'}</strong></p>
-            ${
-              d['رابط الوثيقة'] 
-              ? `<div style="text-align: center;"><iframe src="${d['رابط الوثيقة']}" style="width: 100%; height: 600px; border: none;"></iframe></div>`
-              : `<p style="color: #94a3b8; font-style: italic;">لا يوجد ملف مرفق لهذه الوثيقة</p>`
-            }
-          </div>
-        `;
-      });
-
-      printWin.document.write(`
-        <html dir="rtl" lang="ar">
-        <head>
-          <title>طباعة جميع وثائق المؤسسة</title>
-          <style>
-            body { font-family: 'Cairo', sans-serif; padding: 20px; color: #1e293b; }
-            .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 25px; }
-            .title { font-size: 20px; font-weight: bold; color: #0f172a; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="title">مؤسسة حسن خالد حسن فران للمقاولات العامة</div>
-            <div>كشف ملخص شامل لوثائق وجوازات المؤسسة</div>
-          </div>
-          ${docsHtml}
-        </body>
-        </html>
-      `);
-      printWin.document.close();
-      printWin.print();
     }
   </script>
 </body>
