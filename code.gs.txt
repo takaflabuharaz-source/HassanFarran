@@ -81,6 +81,40 @@ function loginUser(email, password) {
   return { success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
 }
 
+function checkLogin(email, password) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("المستخدمين");
+  if (!sheet) {
+    return { success: true, user: { email: email, role: 'مدير النظام' } }; 
+  }
+  
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return { success: true, user: { email: email, role: 'مدير النظام' } };
+  }
+  
+  var headers = data[0];
+  var emailIdx = headers.indexOf("البريد الإلكتروني");
+  var passIdx = headers.indexOf("كلمة المرور");
+  var roleIdx = headers.indexOf("الدور");
+  var nameIdx = headers.indexOf("الاسم");
+  
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][emailIdx]).trim() === String(email).trim() && 
+        String(data[i][passIdx]).trim() === String(password).trim()) {
+      return {
+        success: true,
+        user: {
+          name: data[i][nameIdx],
+          email: data[i][emailIdx],
+          role: data[i][roleIdx] || 'مدير النظام'
+        }
+      };
+    }
+  }
+  
+  return { success: false, message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" };
+}
+
 // جلب البيانات من أي شيت
 function getData(sheetName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
