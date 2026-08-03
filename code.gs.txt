@@ -1,200 +1,206 @@
-// فتح الواجهة الرئيسية عند طلب الرابط (doGet)
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
+  return HtmlService.createTemplateFromFile('Index')
+    .evaluate()
     .setTitle('نظام إدارة مؤسسة حسن خالد حسن فران للمقاولات')
-    .setXframeOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// المعالجة المباشرة لطلبات HTTP POST (لتسجيل الدخول المباشر عبر API)
 function doPost(e) {
   try {
-    const contents = JSON.parse(e.postData.contents);
-    if (contents.action === 'login') {
-      const email = contents.email;
-      const password = contents.password;
+    // قراءة البيانات المرسلة من الموقع
+    var contents = JSON.parse(e.postData.contents);
+    
+    // يمكنك هنا كتابة الكود الخاص بك (مثل حفظ البيانات في Google Sheet)
+    
+    // إرجاع استجابة نجاح للموقع
+    return ContentService
+      .createTextOutput(JSON.stringify({ "result": "success", "data": contents }))
+      .setMimeType(ContentService.MimeType.JSON);
       
-      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('المستخدمين');
-      if (!sheet) {
-        return createJsonResponse({ success: false, message: 'جدول المستخدمين غير موجود' });
-      }
-      
-      const data = sheet.getDataRange().getValues();
-      const headers = data[0];
-      const emailIdx = headers.indexOf('البريد الإلكتروني');
-      const passIdx = headers.indexOf('كلمة المرور');
-      const nameIdx = headers.indexOf('الاسم');
-      const roleIdx = headers.indexOf('الدور');
-
-      for (let i = 1; i < data.length; i++) {
-        if (data[i][emailIdx] == email && data[i][passIdx] == password) {
-          const user = {
-            id: data[i][0],
-            name: data[i][nameIdx],
-            email: data[i][emailIdx],
-            role: data[i][roleIdx]
-          };
-          return createJsonResponse({ success: true, user: user });
-        }
-      }
-      return createJsonResponse({ success: false, message: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
-    }
-  } catch (err) {
-    return createJsonResponse({ success: false, message: err.toString() });
+  } catch (error) {
+    // في حال حدوث خطأ
+    return ContentService
+      .createTextOutput(JSON.stringify({ "result": "error", "message": error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-function createJsonResponse(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
+// تهيئة الجداول وتحديث الأعمدة
+function setupDatabase() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = [
+    { name: 'المشاريع', headers: ['ID', 'كود المشروع', 'اسم المشروع', 'العميل', 'الموقع', 'القيمة الاجمالية', 'المستخلص المحصل', 'مدير المشروع', 'تاريخ البدء', 'تاريخ النهاية', 'حالة المشروع'] },
+    { name: 'المصروفات', headers: ['ID', 'كود المشروع', 'بند المصروف', 'المبلغ', 'التاريخ', 'ملاحظات', 'رابط الفاتورة'] },
+    { name: 'الموظفين', headers: ['ID', 'رقم الموظف', 'اسم الموظف', 'رقم الهوية', 'تاريخ الميلاد', 'فصيلة الدم', 'تاريخ انتهاء الإقامة', 'المهنة', 'الراتب الأساسي'] },
+    { name: 'مسير الرواتب', headers: ['ID', 'رقم الموظف', 'اسم الموظف', 'الشهر/السنة', 'الراتب الأساسي', 'الخصومات', 'الإضافي', 'صافي الراتب', 'حالة الصرف', 'تاريخ الصرف'] },
+    { name: 'العقود والخطابات', headers: ['ID', 'اسم العقد', 'الطرف الثاني', 'التاريخ', 'رابط المستند'] },
+    { name: 'وثائق الشركة', headers: ['ID', 'اسم الوثيقة', 'رقم الوثيقة', 'تاريخ الانتهاء', 'رابط المستند'] },
+    { name: 'المستخدمين', headers: ['ID', 'الاسم', 'البريد الإلكتروني', 'كلمة المرور', 'الدور'] }
+  ];
+
+  sheets.forEach(sheetInfo => {
+    let sheet = ss.getSheetByName(sheetInfo.name);
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetInfo.name);
+      sheet.appendRow(sheetInfo.headers);
+      sheet.getRange(1, 1, 1, sheetInfo.headers.length).setFontWeight('bold').setBackground('#0f172a').setFontColor('#ffffff');
+    }
+  });
+
+  return { status: 'success', message: 'تمت تهيئة الجداول بنجاح' };
 }
 
-// --- التعامل مع البيانات (CRUD) ---
+// دالة رفع الملفات إلى Google Drive وإرجاع الرابط
+function uploadFileToDrive(fileData) {
+  try {
+    const folderName = "فواتير ومستندات المؤسسة";
+    let folders = DriveApp.getFoldersByName(folderName);
+    let folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
 
-// جلب بيانات جدول محدد كـ Objects
+    const contentType = fileData.mimeType;
+    const bytes = Utilities.base64Decode(fileData.data.split(',')[1]);
+    const blob = Utilities.newBlob(bytes, contentType, fileData.fileName);
+    
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    return { success: true, url: file.getUrl() };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+// تسجيل الدخول
+function loginUser(email, password) {
+  const users = getData('المستخدمين');
+  const user = users.find(u => u['البريد الإلكتروني'] === email && String(u['كلمة المرور']) === String(password));
+  if (user) {
+    return { success: true, user: { name: user['الاسم'], role: user['الدور'], email: user['البريد الإلكتروني'] } };
+  }
+  return { success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
+}
+
+// جلب البيانات من أي شيت
 function getData(sheetName) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
   if (!sheet) return [];
   
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
-
+  
   const headers = data[0];
-  const result = [];
-
-  for (let i = 1; i < data.length; i++) {
-    let rowObj = {};
-    for (let j = 0; j < headers.length; j++) {
-      rowObj[headers[j]] = data[i][j];
-    }
-    result.push(rowObj);
-  }
-  return result;
+  return data.slice(1).map(row => {
+    let obj = {};
+    headers.forEach((h, index) => {
+      let val = row[index];
+      if (val instanceof Date) {
+        val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+      }
+      obj[h] = val;
+    });
+    return obj;
+  });
 }
 
-// حفظ أو تعديل سجل في جدول محدد
+// حفظ أو تعديل سجل
 function saveRecord(sheetName, record) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
-  if (!sheet) return { success: false, message: 'الجدول غير موجود' };
-
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  // إذا لم يكن هناك ID، قم بإنشاء جديد
-  if (!record['ID']) {
-    record['ID'] = new Date().getTime().toString();
-    const newRow = headers.map(h => record[h] !== undefined ? record[h] : '');
-    sheet.appendRow(newRow);
-    return { success: true, action: 'added', id: record['ID'] };
-  } else {
-    // البحث عن السجل والتعديل عليه
-    const idIdx = headers.indexOf('ID');
+  if (record['ID']) {
+    const idIndex = headers.indexOf('ID');
     for (let i = 1; i < data.length; i++) {
-      if (data[i][idIdx] == record['ID']) {
-        const rowNum = i + 1;
-        headers.forEach((h, j) => {
+      if (String(data[i][idIndex]) === String(record['ID'])) {
+        headers.forEach((h, colIndex) => {
           if (record[h] !== undefined) {
-            sheet.getRange(rowNum, j + 1).setValue(record[h]);
+            sheet.getRange(i + 1, colIndex + 1).setValue(record[h]);
           }
         });
-        return { success: true, action: 'updated' };
+        return { success: true, message: 'تم تحديث البيانات بنجاح' };
       }
     }
   }
+
+  record['ID'] = 'ID-' + new Date().getTime();
+  const rowToAppend = headers.map(h => record[h] !== undefined ? record[h] : '');
+  sheet.appendRow(rowToAppend);
+  return { success: true, message: 'تم الحفظ بنجاح' };
 }
 
-// حذف سجل حسب الـ ID
+// حذف سجل
 function deleteRecord(sheetName, id) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
-  if (!sheet) return { success: false };
-
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const idIdx = headers.indexOf('ID');
+  const idIndex = headers.indexOf('ID');
 
   for (let i = 1; i < data.length; i++) {
-    if (data[i][idIdx] == id) {
+    if (String(data[i][idIndex]) === String(id)) {
       sheet.deleteRow(i + 1);
-      return { success: true };
+      return { success: true, message: 'تم الحذف بنجاح' };
     }
   }
-  return { success: false };
+  return { success: false, message: 'لم يتم العثور على السجل' };
 }
 
-// جلب إحصائيات لوحة التحكم والانتهاءات
+// بيانات لوحة التحكم
 function getDashboardData() {
   const projects = getData('المشاريع');
   const expenses = getData('المصروفات');
-  const orgDocs = getData('وثائق المؤسسة');
+  const docs = getData('وثائق الشركة');
   const employees = getData('الموظفين');
 
   let totalContractValue = 0;
   let totalCollected = 0;
+  let totalExpenses = 0;
 
   projects.forEach(p => {
     totalContractValue += parseFloat(p['القيمة الاجمالية']) || 0;
     totalCollected += parseFloat(p['المستخلص المحصل']) || 0;
   });
 
-  let totalExpenses = 0;
   expenses.forEach(e => {
     totalExpenses += parseFloat(e['المبلغ']) || 0;
   });
 
-  const totalRemaining = totalContractValue - totalCollected;
-
-  // حساب التنبيهات القريبة من الانتهاء (أقل من 30 يوم)
   const today = new Date();
-
-  const expiringDocs = orgDocs.filter(d => {
+  const expiringDocs = docs.filter(d => {
     if (!d['تاريخ الانتهاء']) return false;
     const exp = new Date(d['تاريخ الانتهاء']);
-    const diffDays = (exp - today) / (1000 * 60 * 60 * 24);
-    return diffDays <= 30;
+    return (exp - today) / (1000 * 60 * 60 * 24) <= 30;
   });
 
   const expiringIqamas = employees.filter(emp => {
     if (!emp['تاريخ انتهاء الإقامة']) return false;
     const exp = new Date(emp['تاريخ انتهاء الإقامة']);
-    const diffDays = (exp - today) / (1000 * 60 * 60 * 24);
-    return diffDays <= 30;
+    return (exp - today) / (1000 * 60 * 60 * 24) <= 30;
   });
 
   return {
     stats: {
-      totalContractValue: totalContractValue,
-      totalCollected: totalCollected,
-      totalRemaining: totalRemaining,
-      totalExpenses: totalExpenses
+      totalContractValue,
+      totalCollected,
+      totalRemaining: totalContractValue - totalCollected,
+      totalExpenses,
+      projectsCount: projects.length
     },
-    expiringDocs: expiringDocs,
-    expiringIqamas: expiringIqamas
+    expiringDocs,
+    expiringIqamas,
+    projects
   };
 }
 
-// رفع الملفات إلى Google Drive
-function uploadFileToDrive(fileObj) {
-  try {
-    const folderName = 'مرفقات_النظام';
-    let folder;
-    const folders = DriveApp.getFoldersByName(folderName);
-    
-    if (folders.hasNext()) {
-      folder = folders.next();
-    } else {
-      folder = DriveApp.createFolder(folderName);
-    }
-
-    const contentType = fileObj.mimeType;
-    const base64Data = fileObj.data.split(',')[1];
-    const decodedData = Utilities.base64Decode(base64Data);
-    const blob = Utilities.newBlob(decodedData, contentType, fileObj.fileName);
-
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    return { success: true, url: file.getUrl() };
-  } catch (err) {
-    return { success: false, message: err.toString() };
+// حفظ أو تحديث حالة اعتماد مسير الرواتب
+function savePayrollRecord(record) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('مسير الرواتب');
+  if (!sheet) {
+    setupDatabase();
   }
+  return saveRecord('مسير الرواتب', record);
 }
