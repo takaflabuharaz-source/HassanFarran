@@ -1,13 +1,29 @@
 function doGet(e) {
-  // إذا كان الطلب قادماً من GitHub يطلب بيانات محدده (مثلاً: ?action=getDashboard)
-  if (e && e.parameter && e.parameter.action === 'getDashboard') {
-    const data = getDashboardData();
+  // للتعامل مع طلبات البيانات الخارجية عبر GitHub عبر HTTP GET
+  if (e && e.parameter && e.parameter.action) {
+    let result = {};
+    const action = e.parameter.action;
+
+    try {
+      if (action === 'getDashboard') {
+        result = getDashboardData();
+      } else if (action === 'getData') {
+        result = getData(e.parameter.sheetName);
+      } else if (action === 'checkLogin') {
+        result = checkLogin(e.parameter.email, e.parameter.password);
+      } else {
+        result = { success: false, message: 'Action not recognized' };
+      }
+    } catch (err) {
+      result = { success: false, message: err.toString() };
+    }
+
     return ContentService
-      .createTextOutput(JSON.stringify(data))
+      .createTextOutput(JSON.stringify(result))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  // إذا تم فتح الرابط مباشرة من جوجل
+  // في حال فتح الرابط مباشرة داخل جوجل
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('نظام إدارة مؤسسة حسن خالد حسن فران للمقاولات')
@@ -16,23 +32,29 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  let result = {};
   try {
-    // قراءة البيانات المرسلة من الموقع
-    var contents = JSON.parse(e.postData.contents);
-    
-    // يمكنك هنا كتابة الكود الخاص بك (مثل حفظ البيانات في Google Sheet)
-    
-    // إرجاع استجابة نجاح للموقع
-    return ContentService
-      .createTextOutput(JSON.stringify({ "result": "success", "data": contents }))
-      .setMimeType(ContentService.MimeType.JSON);
-      
+    const contents = JSON.parse(e.postData.contents);
+    const action = contents.action;
+
+    if (action === 'saveRecord') {
+      result = saveRecord(contents.sheetName, contents.record);
+    } else if (action === 'deleteRecord') {
+      result = deleteRecord(contents.sheetName, contents.id);
+    } else if (action === 'uploadFile') {
+      result = uploadFileToDrive(contents.fileData);
+    } else if (action === 'checkLogin') {
+      result = checkLogin(contents.email, contents.password);
+    } else {
+      result = { success: true, data: contents };
+    }
   } catch (error) {
-    // في حال حدوث خطأ
-    return ContentService
-      .createTextOutput(JSON.stringify({ "result": "error", "message": error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    result = { success: false, message: error.toString() };
   }
+
+  return ContentService
+    .createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 // تهيئة الجداول وتحديث الأعمدة
@@ -81,15 +103,6 @@ function uploadFileToDrive(fileData) {
 }
 
 // تسجيل الدخول
-function loginUser(email, password) {
-  const users = getData('المستخدمين');
-  const user = users.find(u => u['البريد الإلكتروني'] === email && String(u['كلمة المرور']) === String(password));
-  if (user) {
-    return { success: true, user: { name: user['الاسم'], role: user['الدور'], email: user['البريد الإلكتروني'] } };
-  }
-  return { success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
-}
-
 function checkLogin(email, password) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("المستخدمين");
   if (!sheet) {
@@ -133,16 +146,13 @@ function getData(sheetName) {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return []; 
   
-  // تنظيف أسماء العناوين من المسافات الزائدة
   const headers = data[0].map(h => h ? h.toString().trim() : '');
-  
-  // تصفية الصفوف الفارغة بالكامل إن وجدت
   const rows = data.slice(1).filter(row => row.some(cell => cell !== "" && cell !== null));
   
   return rows.map(row => {
     let obj = {};
     headers.forEach((h, index) => {
-      if (!h) return; // تجنب العناوين الفارغة
+      if (!h) return;
       
       let val = row[index];
       if (val instanceof Date) {
@@ -158,6 +168,8 @@ function getData(sheetName) {
 function saveRecord(sheetName, record) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return { success: false, message: 'الشيت غير موجود' };
+  
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
@@ -245,7 +257,6 @@ function getDashboardData() {
   };
 }
 
-// حفظ أو تحديث حالة اعتماد مسير الرواتب
 function savePayrollRecord(record) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('مسير الرواتب');
