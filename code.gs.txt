@@ -122,17 +122,24 @@ function getData(sheetName) {
   if (!sheet) return [];
   
   const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return [];
+  if (data.length <= 1) return []; 
   
-  const headers = data[0];
-  return data.slice(1).map(row => {
+  // تنظيف أسماء العناوين من المسافات الزائدة
+  const headers = data[0].map(h => h ? h.toString().trim() : '');
+  
+  // تصفية الصفوف الفارغة بالكامل إن وجدت
+  const rows = data.slice(1).filter(row => row.some(cell => cell !== "" && cell !== null));
+  
+  return rows.map(row => {
     let obj = {};
     headers.forEach((h, index) => {
+      if (!h) return; // تجنب العناوين الفارغة
+      
       let val = row[index];
       if (val instanceof Date) {
         val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
       }
-      obj[h] = val;
+      obj[h] = (val !== undefined && val !== null) ? val : "";
     });
     return obj;
   });
