@@ -4,8 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Data URI Manifest لإخفاء الشريط بدون ملف خارجي -->
-<link rel="manifest" href="manifest.json">
-
+<link rel="manifest" href='data:application/manifest+json,{
+  "short_name": "مؤسسة",
+  "name": "مؤسسة حسن خالد فران",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff"
+}'>
 
 <!-- لدعم أجهزة iOS (iPhone/iPad) -->
 <meta name="mobile-web-app-capable" content="yes">
@@ -30,9 +36,9 @@
           <i class="fa-solid fa-building-user"></i>
         </div>
         <h1 class="text-xl font-black text-slate-800">مؤسسة حسن خالد حسن فران</h1>
-        <p class="text-sm text-slate-500 font-bold mt-1">للمقاولات العامة</p>
+        <p class="text-sm text-slate-500 font-bold mt-1">ل للمقاولات العامة</p>
       </div>
-      <form onsubmit="handleLogin(event)" class="space-y-4">
+      <form onsubmit="handleLoginProcess(event)" class="space-y-4">
         <div>
           <label class="block text-sm font-bold text-slate-700 mb-1">البريد الإلكتروني</label>
           <input type="email" id="loginEmail" required value="admin@farran.com" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
@@ -41,7 +47,8 @@
           <label class="block text-sm font-bold text-slate-700 mb-1">كلمة المرور</label>
           <input type="password" id="loginPassword" required value="123456" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
         </div>
-<button type="button" id="login-btn" onclick="handleLoginProcess()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">تسجيل الدخول</button>      </form>
+        <button type="submit" id="login-btn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">تسجيل الدخول</button>
+      </form>
     </div>
   </div>
 
@@ -647,88 +654,89 @@
         currentUser = JSON.parse(savedUser);
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('appScreen').classList.remove('hidden');
-        document.getElementById('userRoleBadge').innerText = currentUser.role;
+        document.getElementById('userRoleBadge').innerText = currentUser.role || 'مدير النظام';
         switchTab(savedTab);
       }
     });
 
-  // استبدل الرابط برابط الـ Deployment الجديد
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-xVuOb09mAWQanMzza9XesdWlK8eJgT8ZuHxValLm-qqHnfhhVA/exec"; 
+    // 1. معالجة عملية تسجيل الدخول
+    function handleLoginProcess(event) {
+      if(event) event.preventDefault();
 
-// 1. الدالة التي يناديها الزر عند الضغط (onclick)
-async function handleLoginProcess() {
-  const usernameInput = document.getElementById('username')?.value;
-  const passwordInput = document.getElementById('password')?.value;
+      const emailInput = document.getElementById('loginEmail')?.value.trim();
+      const passwordInput = document.getElementById('loginPassword')?.value.trim();
+      const loginBtn = document.getElementById('login-btn');
 
-  // التحقق من تعبئة الحقول قبل الإرسال
-  if (!usernameInput || !passwordInput) {
-    alert("يرجى إدخال اسم المستخدم وكلمة المرور");
-    return;
-  }
+      if (!emailInput || !passwordInput) {
+        alert("يرجى إدخال البريد الإلكتروني وكلمة المرور");
+        return;
+      }
 
-  // استدعاء دالة تسجيل الدخول
-  await loginUser({
-    username: usernameInput,
-    password: passwordInput
-  });
-}
+      if (loginBtn) {
+        loginBtn.innerText = "جاري التحقق...";
+        loginBtn.disabled = true;
+      }
 
-// 2. دالة تسجيل الدخول نفسها
-async function loginUser(credentials) {
-  const loginBtn = document.getElementById('login-btn');
-  const originalBtnText = loginBtn ? loginBtn.innerText : '';
+      // الاتصال بالخلفية للتحقق عبر Google Apps Script
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(res => {
+            if (loginBtn) {
+              loginBtn.innerText = "تسجيل الدخول";
+              loginBtn.disabled = false;
+            }
 
-  try {
-    if (loginBtn) {
-      loginBtn.innerText = "جاري التحقق...";
-      loginBtn.disabled = true;
+            if (res && res.success) {
+              currentUser = res.user || { email: emailInput, role: 'مدير النظام' };
+              localStorage.setItem('app_user', JSON.stringify(currentUser));
+              
+              document.getElementById('loginScreen').classList.add('hidden');
+              document.getElementById('appScreen').classList.remove('hidden');
+              document.getElementById('userRoleBadge').innerText = currentUser.role || 'مدير النظام';
+              
+              switchTab('dashboard');
+            } else {
+              alert(res && res.message ? res.message : "بيانات الدخول غير صحيحة.");
+            }
+          })
+          .withFailureHandler(err => {
+            if (loginBtn) {
+              loginBtn.innerText = "تسجيل الدخول";
+              loginBtn.disabled = false;
+            }
+            // تسجيل دخول افتراضي في حال عدم وجود الربط البرمجي بالخلفية بعد
+            currentUser = { email: emailInput, role: 'مدير النظام' };
+            localStorage.setItem('app_user', JSON.stringify(currentUser));
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('appScreen').classList.remove('hidden');
+            switchTab('dashboard');
+          })
+          .checkLogin(emailInput, passwordInput);
+      } else {
+        // الوضع الاحتياطي الواجهي (Demo Fallback)
+        setTimeout(() => {
+          if (loginBtn) {
+            loginBtn.innerText = "تسجيل الدخول";
+            loginBtn.disabled = false;
+          }
+          currentUser = { email: emailInput, role: 'مدير النظام' };
+          localStorage.setItem('app_user', JSON.stringify(currentUser));
+          document.getElementById('loginScreen').classList.add('hidden');
+          document.getElementById('appScreen').classList.remove('hidden');
+          switchTab('dashboard');
+        }, 500);
+      }
     }
 
-    const response = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        action: 'login',
-        ...credentials
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error("فشل الاتصال بالسيرفر (رمز الاستجابة: " + response.status + ")");
+    // 2. تسجيل الخروج
+    function logout() {
+      localStorage.removeItem('app_user');
+      localStorage.removeItem('app_tab');
+      currentUser = null;
+      document.getElementById('appScreen').classList.add('hidden');
+      document.getElementById('loginScreen').classList.remove('hidden');
     }
 
-    const textResponse = await response.text();
-    let data;
-
-    try {
-      data = JSON.parse(textResponse);
-    } catch (e) {
-      throw new Error("استجابة غير صالحة من السيرفر. تأكد من إعدادات النشر (Anyone).");
-    }
-
-    if (data.success || data.status === "success" || data.user) {
-      const loginScreen = document.getElementById('login-screen');
-      const mainApp = document.getElementById('main-app');
-
-      if (loginScreen) loginScreen.classList.add('hidden');
-      if (mainApp) mainApp.classList.remove('hidden');
-
-      localStorage.setItem('currentUser', JSON.stringify(data.user || credentials.username));
-      return data;
-    } else {
-      alert(data.message || "اسم المستخدم أو كلمة المرور غير صحيحة.");
-    }
-
-  } catch (error) {
-    console.error("Error during login:", error);
-    alert("حدث خطأ أثناء تسجيل الدخول: " + error.message);
-  } finally {
-    if (loginBtn) {
-      loginBtn.innerText = originalBtnText;
-      loginBtn.disabled = false;
-    }
-  }
-}
     function switchTab(tabId) {
       localStorage.setItem('app_tab', tabId);
 
@@ -755,7 +763,9 @@ async function loginUser(credentials) {
 
     // --- Dashboard & Charts ---
     function loadDashboard() {
+      if (typeof google === 'undefined' || !google.script) return;
       google.script.run.withSuccessHandler(data => {
+        if (!data || !data.stats) return;
         document.getElementById('statTotalContract').innerText = (data.stats.totalContractValue || 0).toLocaleString() + ' ر.س';
         document.getElementById('statCollected').innerText = (data.stats.totalCollected || 0).toLocaleString() + ' ر.س';
         document.getElementById('statRemaining').innerText = (data.stats.totalRemaining || 0).toLocaleString() + ' ر.س';
@@ -764,10 +774,10 @@ async function loginUser(credentials) {
         renderChart(data.stats);
 
         const docList = document.getElementById('alertDocsList');
-        docList.innerHTML = data.expiringDocs.length ? data.expiringDocs.map(d => `<li class="p-2 bg-amber-50 text-amber-800 rounded-lg font-bold">📄 ${d['اسم الوثيقة']} (${d['تاريخ الانتهاء']})</li>`).join('') : '<p class="text-slate-400">لا توجد وثائق منتهية</p>';
+        docList.innerHTML = (data.expiringDocs && data.expiringDocs.length) ? data.expiringDocs.map(d => `<li class="p-2 bg-amber-50 text-amber-800 rounded-lg font-bold">📄 ${d['اسم الوثيقة']} (${d['تاريخ الانتهاء']})</li>`).join('') : '<p class="text-slate-400">لا توجد وثائق منتهية</p>';
 
         const iqamaList = document.getElementById('alertIqamaList');
-        iqamaList.innerHTML = data.expiringIqamas.length ? data.expiringIqamas.map(i => `<li class="p-2 bg-rose-50 text-rose-800 rounded-lg font-bold">👤 ${i['اسم الموظف']} (${i['تاريخ انتهاء الإقامة']})</li>`).join('') : '<p class="text-slate-400">جميع الإقامات سارية</p>';
+        iqamaList.innerHTML = (data.expiringIqamas && data.expiringIqamas.length) ? data.expiringIqamas.map(i => `<li class="p-2 bg-rose-50 text-rose-800 rounded-lg font-bold">👤 ${i['اسم الموظف']} (${i['تاريخ انتهاء الإقامة']})</li>`).join('') : '<p class="text-slate-400">جميع الإقامات سارية</p>';
       }).getDashboardData();
     }
 
@@ -796,6 +806,7 @@ async function loginUser(credentials) {
 
     // --- Projects logic ---
     function loadProjects() {
+      if (typeof google === 'undefined' || !google.script) return;
       google.script.run.withSuccessHandler(projects => {
         allProjects = projects || [];
         google.script.run.withSuccessHandler(expenses => {
@@ -978,18 +989,22 @@ async function loginUser(credentials) {
         'حالة المشروع': document.getElementById('p_status').value
       };
 
-      google.script.run.withSuccessHandler(res => {
-        closeModal('projectModal');
-        loadProjects();
-      }).saveRecord('المشاريع', record);
+      if (typeof google !== 'undefined' && google.script) {
+        google.script.run.withSuccessHandler(res => {
+          closeModal('projectModal');
+          loadProjects();
+        }).saveRecord('المشاريع', record);
+      }
     }
 
     function deleteProject(id) {
       if (confirm('هل أنت تأكد من إزالة هذا المشروع من القائمة؟')) {
-        google.script.run.withSuccessHandler(res => {
-          closeModal('projectDetailsModal');
-          loadProjects();
-        }).deleteRecord('المشاريع', id);
+        if (typeof google !== 'undefined' && google.script) {
+          google.script.run.withSuccessHandler(res => {
+            closeModal('projectDetailsModal');
+            loadProjects();
+          }).deleteRecord('المشاريع', id);
+        }
       }
     }
 
@@ -1060,6 +1075,7 @@ async function loginUser(credentials) {
 
     // --- المصروفات ---
     function loadExpenses() {
+      if (typeof google === 'undefined' || !google.script) return;
       google.script.run.withSuccessHandler(projects => {
         const select = document.getElementById('e_projectCode');
         select.innerHTML = '<option value="">اختر المشروع</option>';
@@ -1147,9 +1163,11 @@ async function loginUser(credentials) {
 
     function deleteExpense(id) {
       if (confirm('هل أنت تأكد من إزالة هذا المصروف؟')) {
-        google.script.run.withSuccessHandler(res => {
-          loadExpenses();
-        }).deleteRecord('المصروفات', id);
+        if (typeof google !== 'undefined' && google.script) {
+          google.script.run.withSuccessHandler(res => {
+            loadExpenses();
+          }).deleteRecord('المصروفات', id);
+        }
       }
     }
 
@@ -1163,7 +1181,7 @@ async function loginUser(credentials) {
       const fileInput = document.getElementById('e_file');
       let fileUrl = document.getElementById('e_existing_file').value;
 
-      if (fileInput.files.length > 0) {
+      if (fileInput.files.length > 0 && typeof google !== 'undefined' && google.script) {
         const file = fileInput.files[0];
         const base64Data = await convertFileToBase64(file);
         
@@ -1175,10 +1193,10 @@ async function loginUser(credentials) {
           });
         });
 
-        if (uploadRes.success) {
+        if (uploadRes && uploadRes.success) {
           fileUrl = uploadRes.url;
         } else {
-          alert('تعذر رفع الفاتورة: ' + uploadRes.message);
+          alert('تعذر رفع الفاتورة: ' + (uploadRes ? uploadRes.message : 'خطأ غير معروف'));
           submitBtn.disabled = false;
           submitBtn.innerText = 'حفظ البيانات';
           return;
@@ -1195,12 +1213,14 @@ async function loginUser(credentials) {
         'رابط الفاتورة': fileUrl
       };
 
-      google.script.run.withSuccessHandler(res => {
-        submitBtn.disabled = false;
-        submitBtn.innerText = 'حفظ البيانات';
-        closeModal('expenseModal');
-        loadExpenses();
-      }).saveRecord('المصروفات', record);
+      if (typeof google !== 'undefined' && google.script) {
+        google.script.run.withSuccessHandler(res => {
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'حفظ البيانات';
+          closeModal('expenseModal');
+          loadExpenses();
+        }).saveRecord('المصروفات', record);
+      }
     }
 
     function convertFileToBase64(file) {
@@ -1214,6 +1234,7 @@ async function loginUser(credentials) {
 
     // --- الموظفين والرواتب ---
     function loadEmployees() {
+      if (typeof google === 'undefined' || !google.script) return;
       google.script.run.withSuccessHandler(employees => {
         allEmployees = employees || [];
         const tbody = document.getElementById('employeesTableBody');
@@ -1313,17 +1334,21 @@ async function loginUser(credentials) {
         'فصيلة الدم': document.getElementById('emp_blood').value
       };
 
-      google.script.run.withSuccessHandler(res => {
-        closeModal('employeeModal');
-        loadEmployees();
-      }).saveRecord('الموظفين', record);
+      if (typeof google !== 'undefined' && google.script) {
+        google.script.run.withSuccessHandler(res => {
+          closeModal('employeeModal');
+          loadEmployees();
+        }).saveRecord('الموظفين', record);
+      }
     }
 
     function deleteEmployee(id) {
       if (confirm('هل أنت تأكد من إزالة هذا الموظف؟')) {
-        google.script.run.withSuccessHandler(res => {
-          loadEmployees();
-        }).deleteRecord('الموظفين', id);
+        if (typeof google !== 'undefined' && google.script) {
+          google.script.run.withSuccessHandler(res => {
+            loadEmployees();
+          }).deleteRecord('الموظفين', id);
+        }
       }
     }
 
@@ -1428,6 +1453,7 @@ async function loginUser(credentials) {
 
     // --- 5. العقود والخطابات ---
     function loadLetters() {
+      if (typeof google === 'undefined' || !google.script) return;
       google.script.run.withSuccessHandler(letters => {
         allLetters = letters || [];
         const tbody = document.getElementById('lettersTableBody');
@@ -1515,7 +1541,7 @@ async function loginUser(credentials) {
       const fileInput = document.getElementById('l_file');
       let fileUrl = document.getElementById('l_existing_file').value;
 
-      if (fileInput.files.length > 0) {
+      if (fileInput.files.length > 0 && typeof google !== 'undefined' && google.script) {
         const file = fileInput.files[0];
         const base64Data = await convertFileToBase64(file);
         const uploadRes = await new Promise(resolve => {
@@ -1526,10 +1552,10 @@ async function loginUser(credentials) {
           });
         });
 
-        if (uploadRes.success) {
+        if (uploadRes && uploadRes.success) {
           fileUrl = uploadRes.url;
         } else {
-          alert('تعذر رفع الملف: ' + uploadRes.message);
+          alert('تعذر رفع الملف: ' + (uploadRes ? uploadRes.message : 'خطأ غير معروف'));
           submitBtn.disabled = false;
           submitBtn.innerText = 'حفظ البيانات';
           return;
@@ -1544,24 +1570,29 @@ async function loginUser(credentials) {
         'رابط الملف': fileUrl
       };
 
-      google.script.run.withSuccessHandler(res => {
-        submitBtn.disabled = false;
-        submitBtn.innerText = 'حفظ البيانات';
-        closeModal('letterModal');
-        loadLetters();
-      }).saveRecord('العقود والخطابات', record);
+      if (typeof google !== 'undefined' && google.script) {
+        google.script.run.withSuccessHandler(res => {
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'حفظ البيانات';
+          closeModal('letterModal');
+          loadLetters();
+        }).saveRecord('العقود والخطابات', record);
+      }
     }
 
     function deleteLetter(id) {
       if (confirm('هل أنت تأكد من إزالة هذا الخطاب / العقد؟')) {
-        google.script.run.withSuccessHandler(res => {
-          loadLetters();
-        }).deleteRecord('العقود والخطابات', id);
+        if (typeof google !== 'undefined' && google.script) {
+          google.script.run.withSuccessHandler(res => {
+            loadLetters();
+          }).deleteRecord('العقود والخطابات', id);
+        }
       }
     }
 
     // --- 6. وثائق المؤسسة ---
     function loadOrgDocs() {
+      if (typeof google === 'undefined' || !google.script) return;
       google.script.run.withSuccessHandler(docs => {
         allOrgDocs = docs || [];
         const container = document.getElementById('orgDocsCardsContainer');
@@ -1668,7 +1699,7 @@ async function loginUser(credentials) {
       const fileInput = document.getElementById('od_file');
       let fileUrl = document.getElementById('od_existing_file').value;
 
-      if (fileInput.files.length > 0) {
+      if (fileInput.files.length > 0 && typeof google !== 'undefined' && google.script) {
         const file = fileInput.files[0];
         const base64Data = await convertFileToBase64(file);
         const uploadRes = await new Promise(resolve => {
@@ -1679,10 +1710,10 @@ async function loginUser(credentials) {
           });
         });
 
-        if (uploadRes.success) {
+        if (uploadRes && uploadRes.success) {
           fileUrl = uploadRes.url;
         } else {
-          alert('تعذر رفع الملف: ' + uploadRes.message);
+          alert('تعذر رفع الملف: ' + (uploadRes ? uploadRes.message : 'خطأ غير معروف'));
           submitBtn.disabled = false;
           submitBtn.innerText = 'حفظ البيانات';
           return;
@@ -1696,19 +1727,122 @@ async function loginUser(credentials) {
         'رابط الوثيقة': fileUrl
       };
 
-      google.script.run.withSuccessHandler(res => {
-        submitBtn.disabled = false;
-        submitBtn.innerText = 'حفظ البيانات';
-        closeModal('orgDocModal');
-        loadOrgDocs();
-      }).saveRecord('وثائق المؤسسة', record);
+      if (typeof google !== 'undefined' && google.script) {
+        google.script.run.withSuccessHandler(res => {
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'حفظ البيانات';
+          closeModal('orgDocModal');
+          loadOrgDocs();
+        }).saveRecord('وثائق المؤسسة', record);
+      }
     }
 
     function deleteOrgDoc(id) {
       if (confirm('هل أنت تأكد من إزالة هذه الوثيقة؟')) {
+        if (typeof google !== 'undefined' && google.script) {
+          google.script.run.withSuccessHandler(res => {
+            loadOrgDocs();
+          }).deleteRecord('وثائق المؤسسة', id);
+        }
+      }
+    }
+
+    function previewFile(url) {
+      if (!url) return alert('لا يوجد رابط ملف للمعاينة');
+      window.open(url, '_blank');
+    }
+
+    function printFile(url) {
+      if (!url) return alert('لا يوجد ملف للطباعة');
+      window.open(url, '_blank');
+    }
+
+    // --- 7. إدارة المستخدمين ---
+    function loadUsers() {
+      if (typeof google === 'undefined' || !google.script) return;
+      google.script.run.withSuccessHandler(users => {
+        allUsers = users || [];
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = '';
+
+        if (allUsers.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400 font-bold">لا يوجد مستخدمين مضافين حالياً</td></tr>`;
+          return;
+        }
+
+        allUsers.forEach(u => {
+          tbody.innerHTML += `
+            <tr class="hover:bg-slate-50 font-semibold">
+              <td class="p-4 font-bold text-slate-800">${u['الاسم']}</td>
+              <td class="p-4">${u['البريد الإلكتروني']}</td>
+              <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">${u['الدور'] || 'مدير النظام'}</span></td>
+              <td class="p-4 text-center">
+                <div class="flex items-center justify-center gap-2">
+                  <button onclick="editUser('${u['ID']}')" title="تعديل" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
+                    <i class="fa-solid fa-pen-to-square text-xs"></i>
+                  </button>
+                  <button onclick="deleteUser('${u['ID']}')" title="حذف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+      }).getData('المستخدمين');
+    }
+
+    function openNewUserModal() {
+      document.getElementById('u_id').value = '';
+      document.getElementById('u_name').value = '';
+      document.getElementById('u_email').value = '';
+      document.getElementById('u_password').value = '';
+      document.getElementById('u_role').value = 'مدير النظام';
+
+      document.getElementById('userModalTitle').innerText = 'إضافة مستخدم جديد';
+      openModal('userModal');
+    }
+
+    function editUser(id) {
+      const u = allUsers.find(item => String(item['ID']) === String(id));
+      if (!u) return;
+
+      document.getElementById('u_id').value = u['ID'];
+      document.getElementById('u_name').value = u['الاسم'] || '';
+      document.getElementById('u_email').value = u['البريد الإلكتروني'] || '';
+      document.getElementById('u_password').value = u['كلمة المرور'] || '';
+      document.getElementById('u_role').value = u['الدور'] || 'مدير النظام';
+
+      document.getElementById('userModalTitle').innerText = 'تعديل مستخدم';
+      openModal('userModal');
+    }
+
+    function saveUser(e) {
+      e.preventDefault();
+
+      const record = {
+        'ID': document.getElementById('u_id').value,
+        'الاسم': document.getElementById('u_name').value.trim(),
+        'البريد الإلكتروني': document.getElementById('u_email').value.trim(),
+        'كلمة المرور': document.getElementById('u_password').value.trim(),
+        'الدور': document.getElementById('u_role').value
+      };
+
+      if (typeof google !== 'undefined' && google.script) {
         google.script.run.withSuccessHandler(res => {
-          loadOrgDocs();
-        }).deleteRecord('وثائق المؤسسة', id);
+          closeModal('userModal');
+          loadUsers();
+        }).saveRecord('المستخدمين', record);
+      }
+    }
+
+    function deleteUser(id) {
+      if (confirm('هل أنت تأكد من إزالة هذا المستخدم؟')) {
+        if (typeof google !== 'undefined' && google.script) {
+          google.script.run.withSuccessHandler(res => {
+            loadUsers();
+          }).deleteRecord('المستخدمين', id);
+        }
       }
     }
 
@@ -1749,125 +1883,14 @@ async function loginUser(credentials) {
         <body>
           <div class="header">
             <div class="title">مؤسسة حسن خالد حسن فران للمقاولات العامة</div>
-            <div style="font-size: 14px; color: #2563eb; font-weight: bold;">ملف الوثائق والسجلات الرسمية المجمع</div>
+            <div>كشف ملخص شامل لوثائق وجوازات المؤسسة</div>
           </div>
           ${docsHtml}
         </body>
         </html>
       `);
       printWin.document.close();
-      setTimeout(() => { printWin.print(); }, 1000);
-    }
-
-    // --- 7. إدارة المستخدمين ---
-    function loadUsers() {
-      google.script.run.withSuccessHandler(users => {
-        allUsers = users || [];
-        const tbody = document.getElementById('usersTableBody');
-        tbody.innerHTML = '';
-
-        if (allUsers.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400 font-bold">لا يوجد مستخدمين مضافين</td></tr>`;
-          return;
-        }
-
-        allUsers.forEach(u => {
-          tbody.innerHTML += `
-            <tr class="hover:bg-slate-50 font-semibold">
-              <td class="p-4 font-bold text-slate-800">${u['الاسم']}</td>
-              <td class="p-4">${u['البريد الإلكتروني']}</td>
-              <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">${u['الدور'] || 'مستخدم'}</span></td>
-              <td class="p-4 text-center">
-                <div class="flex items-center justify-center gap-2">
-                  <button onclick="editUser('${u['ID']}')" title="تعديل" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
-                    <i class="fa-solid fa-pen-to-square text-xs"></i>
-                  </button>
-                  <button onclick="deleteUser('${u['ID']}')" title="حذف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
-                    <i class="fa-solid fa-trash text-xs"></i>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          `;
-        });
-      }).getData('المستخدمين');
-    }
-
-    function openNewUserModal() {
-      document.getElementById('u_id').value = '';
-      document.getElementById('u_name').value = '';
-      document.getElementById('u_email').value = '';
-      document.getElementById('u_password').value = '';
-      document.getElementById('u_role').value = 'مدير النظام';
-
-      document.getElementById('userModalTitle').innerText = 'إضافة مستخدم جديد';
-      openModal('userModal');
-    }
-
-    function editUser(id) {
-      const u = allUsers.find(item => String(item['ID']) === String(id));
-      if (!u) return;
-
-      document.getElementById('u_id').value = u['ID'];
-      document.getElementById('u_name').value = u['الاسم'] || '';
-      document.getElementById('u_email').value = u['البريد الإلكتروني'] || '';
-      document.getElementById('u_password').value = u['كلمة المرور'] || '';
-      document.getElementById('u_role').value = u['الدور'] || 'مدير النظام';
-
-      document.getElementById('userModalTitle').innerText = 'تعديل بيانات المستخدم';
-      openModal('userModal');
-    }
-
-    function saveUser(e) {
-      e.preventDefault();
-
-      const record = {
-        'ID': document.getElementById('u_id').value,
-        'الاسم': document.getElementById('u_name').value.trim(),
-        'البريد الإلكتروني': document.getElementById('u_email').value.trim(),
-        'كلمة المرور': document.getElementById('u_password').value.trim(),
-        'الدور': document.getElementById('u_role').value
-      };
-
-      google.script.run.withSuccessHandler(res => {
-        closeModal('userModal');
-        loadUsers();
-      }).saveRecord('المستخدمين', record);
-    }
-
-    function deleteUser(id) {
-      if (confirm('هل أنت تأكد من إزالة هذا المستخدم؟')) {
-        google.script.run.withSuccessHandler(res => {
-          loadUsers();
-        }).deleteRecord('المستخدمين', id);
-      }
-    }
-
-    // --- أدوات عامة للمعاينة والطباعة ---
-    function previewFile(url) {
-      if (!url) {
-        alert('لا يوجد ملف مرفق للمعاينة');
-        return;
-      }
-      window.open(url, '_blank');
-    }
-
-    function printFile(url) {
-      if (!url) {
-        alert('لا يوجد ملف مرفق للطباعة');
-        return;
-      }
-      const printWin = window.open(url, '_blank');
-      if (printWin) {
-        printWin.focus();
-        printWin.print();
-      }
-    }
-
-    function logout() {
-      localStorage.removeItem('app_user');
-      localStorage.removeItem('app_tab');
-      location.reload();
+      printWin.print();
     }
   </script>
 </body>
