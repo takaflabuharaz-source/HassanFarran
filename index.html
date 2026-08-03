@@ -677,12 +677,11 @@
       }
     });
 
-   async function handleLogin(event) {
-  event.preventDefault(); // منع إعادة تحميل الصفحة
+  async function handleLogin(event) {
+  event.preventDefault();
   
-  const email = document.getElementById('emailInput').value; // غير المعرف حسب كودك
+  const email = document.getElementById('emailInput').value;
   const password = document.getElementById('passwordInput').value;
-
   const scriptURL = 'ضع_رابط_WEB_APP_هنا';
 
   try {
@@ -698,7 +697,6 @@
     const result = await response.json();
 
     if (result.success) {
-      // إخفاء شاشة الدخول وإظهار الشاشة الرئيسية
       document.getElementById('loginScreen').classList.add('hidden');
       document.getElementById('mainApp').classList.remove('hidden');
     } else {
@@ -709,15 +707,6 @@
     alert('حدث خطأ أثناء الاتصال بالسيرفر');
   }
 }
-      }).loginUser(email, password);
-    }
-
-    function logout() {
-      localStorage.removeItem('app_user');
-      localStorage.removeItem('app_tab');
-      location.reload();
-    }
-
     function switchTab(tabId) {
       localStorage.setItem('app_tab', tabId);
 
