@@ -642,6 +642,8 @@
     window.addEventListener('DOMContentLoaded', () => {
       const savedUser = localStorage.getItem('app_user');
       const savedTab = localStorage.getItem('app_tab') || 'dashboard';
+      // تعريف رابط Google Apps Script Web App
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-xVuOb09mAWQanMzza9XesdWlK8eJgT8ZuHxValLm-qqHnfhhVA/exec";
 
       if (savedUser) {
         currentUser = JSON.parse(savedUser);
