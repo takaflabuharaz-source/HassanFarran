@@ -655,24 +655,40 @@
   // استبدل الرابط برابط الـ Deployment الجديد
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-xVuOb09mAWQanMzza9XesdWlK8eJgT8ZuHxValLm-qqHnfhhVA/exec"; 
 
-// دالة تسجيل الدخول المعدلة
+// 1. الدالة التي يناديها الزر عند الضغط (onclick)
+async function handleLoginProcess() {
+  const usernameInput = document.getElementById('username')?.value;
+  const passwordInput = document.getElementById('password')?.value;
+
+  // التحقق من تعبئة الحقول قبل الإرسال
+  if (!usernameInput || !passwordInput) {
+    alert("يرجى إدخال اسم المستخدم وكلمة المرور");
+    return;
+  }
+
+  // استدعاء دالة تسجيل الدخول
+  await loginUser({
+    username: usernameInput,
+    password: passwordInput
+  });
+}
+
+// 2. دالة تسجيل الدخول نفسها
 async function loginUser(credentials) {
-  const loginBtn = document.getElementById('login-btn'); // تأكد من اسم ID زر الدخول لديك
+  const loginBtn = document.getElementById('login-btn');
   const originalBtnText = loginBtn ? loginBtn.innerText : '';
 
   try {
-    // 1. تغيير حالة الزر لمنع الضغط المتكرر وإظهار مؤشر الانتظار
     if (loginBtn) {
       loginBtn.innerText = "جاري التحقق...";
       loginBtn.disabled = true;
     }
 
-    // 2. إرسال الطلب إلى Apps Script
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
-        action: 'login', // إرسال الإجراء إذا كان السيرفر يتطلبه
+        action: 'login',
         ...credentials
       })
     });
@@ -681,29 +697,23 @@ async function loginUser(credentials) {
       throw new Error("فشل الاتصال بالسيرفر (رمز الاستجابة: " + response.status + ")");
     }
 
-    // 3. قراءة الاستجابة كنص أولاً لمنع أخطاء الـ JSON في الجوال
     const textResponse = await response.text();
     let data;
 
     try {
       data = JSON.parse(textResponse);
     } catch (e) {
-      // إذا أعاد السيرفر صفحة HTML بدلاً من JSON
       throw new Error("استجابة غير صالحة من السيرفر. تأكد من إعدادات النشر (Anyone).");
     }
 
-    // 4. معالجة نتيجة الدخول
     if (data.success || data.status === "success" || data.user) {
-      // إخفاء شاشة تسجيل الدخول وإظهار التطبيق الرئيسي
       const loginScreen = document.getElementById('login-screen');
       const mainApp = document.getElementById('main-app');
 
       if (loginScreen) loginScreen.classList.add('hidden');
       if (mainApp) mainApp.classList.remove('hidden');
 
-      // حفظ جلسة المستخدم محلياً (اختياري)
       localStorage.setItem('currentUser', JSON.stringify(data.user || credentials.username));
-
       return data;
     } else {
       alert(data.message || "اسم المستخدم أو كلمة المرور غير صحيحة.");
@@ -713,7 +723,6 @@ async function loginUser(credentials) {
     console.error("Error during login:", error);
     alert("حدث خطأ أثناء تسجيل الدخول: " + error.message);
   } finally {
-    // إعادة الزر لحالته الطبيعية
     if (loginBtn) {
       loginBtn.innerText = originalBtnText;
       loginBtn.disabled = false;
