@@ -4,18 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Data URI Manifest لإخفاء الشريط بدون ملف خارجي -->
-  <link rel="manifest" href='data:application/manifest+json,{
-    "short_name": "مؤسسة",
-    "name": "مؤسسة حسن خالد فران",
-    "start_url": ".",
-    "display": "standalone",
-    "background_color": "#ffffff",
-    "theme_color": "#ffffff"
-  }'>
+<link rel="manifest" href='data:application/manifest+json,{
+  "short_name": "مؤسسة",
+  "name": "مؤسسة حسن خالد فران",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff"
+}'>
 
-  <!-- لدعم أجهزة iOS (iPhone/iPad) -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- لدعم أجهزة الآيفون (iOS) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>نظام إدارة مؤسسة حسن خالد حسن فران للمقاولات</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -636,8 +636,6 @@
   </div>
 
   <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbypJX-l1k2n93kTHv-wqs9nr7QrZEXXu4i0zMExLOTZEiN2IH3KqcrylIHRt8hycY5ayA/exec';
-
     let currentUser = null;
     let allProjects = [];
     let allExpenses = [];
@@ -647,23 +645,7 @@
     let allUsers = [];
     let chartInstance = null;
 
-    // دالة جلب البيانات العامة من السكربت (بديل google.script.run)
-    async function apiFetch(action, params = {}) {
-      try {
-        const response = await fetch(scriptURL, {
-          method: 'POST',
-          mode: 'cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action, ...params })
-        });
-        return await response.json();
-      } catch (error) {
-        console.error(`Error executing action ${action}:`, error);
-        return null;
-      }
-    }
-
-    // استعادة الجلسة والتبويب عند بداية التحميل
+    // استعادة الجلسة والتبويب عند بداية التحميل (Refresh)
     window.addEventListener('DOMContentLoaded', () => {
       const savedUser = localStorage.getItem('app_user');
       const savedTab = localStorage.getItem('app_tab') || 'dashboard';
@@ -672,40 +654,54 @@
         currentUser = JSON.parse(savedUser);
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('appScreen').classList.remove('hidden');
-        document.getElementById('userRoleBadge').innerText = currentUser.role || 'مدير النظام';
+        document.getElementById('userRoleBadge').innerText = currentUser.role;
         switchTab(savedTab);
       }
     });
 
-    // تسجيل الدخول
     async function handleLogin(event) {
       event.preventDefault();
       
-      const emailInput = document.getElementById('loginEmail');
-      const passwordInput = document.getElementById('loginPassword');
+      const emailInput = document.getElementById('loginEmail') || document.getElementById('emailInput');
+      const passwordInput = document.getElementById('loginPassword') || document.getElementById('passwordInput');
 
-      const btn = event.target.querySelector('button[type="submit"]');
-      btn.disabled = true;
-      btn.innerText = 'جاري التحقق...';
+      if (!emailInput || !passwordInput) {
+        alert("خطأ: لم يتم العثور على حقول الإدخال في الصفحة");
+        return;
+      }
 
-      const result = await apiFetch('login', {
-        email: emailInput.value,
-        password: passwordInput.value
-      });
+      const scriptURL = 'https://script.google.com/macros/s/AKfycbypJX-l1k2n93kTHv-wqs9nr7QrZEXXu4i0zMExLOTZEiN2IH3KqcrylIHRt8hycY5ayA/exec';
 
-      btn.disabled = false;
-      btn.innerText = 'تسجيل الدخول';
+      try {
+        // إرسال الطلب بدون headers معقدة لتجنب حظر CORS
+        const response = await fetch(scriptURL, {
+          method: 'POST',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8'
+          },
+          body: JSON.stringify({
+            action: 'login',
+            email: emailInput.value,
+            password: passwordInput.value
+          })
+        });
 
-      if (result && result.success) {
-        currentUser = result.user || { email: emailInput.value, role: 'مدير النظام' };
-        localStorage.setItem('app_user', JSON.stringify(currentUser));
-        
-        document.getElementById('loginScreen').classList.add('hidden');
-        document.getElementById('appScreen').classList.remove('hidden');
-        document.getElementById('userRoleBadge').innerText = currentUser.role || 'مدير النظام';
-        switchTab('dashboard');
-      } else {
-        alert((result && result.message) || 'اسم المستخدم أو كلمة المرور غير صحيحة');
+        const result = await response.json();
+
+        if (result.success) {
+          currentUser = result.user || { role: 'مدير النظام' };
+          localStorage.setItem('app_user', JSON.stringify(currentUser));
+          document.getElementById('loginScreen').classList.add('hidden');
+          document.getElementById('appScreen').classList.remove('hidden');
+          document.getElementById('userRoleBadge').innerText = currentUser.role;
+          switchTab('dashboard');
+        } else {
+          alert(result.message || 'اسم المستخدم أو كلمة المرور غير صحيحة');
+        }
+      } catch (error) {
+        console.error('Error during login:', error);
+        alert('حدث خطأ أثناء الاتصال بالسيرفر، تأكد من إعدادات النشر على Google Apps Script');
       }
     }
 
@@ -734,26 +730,21 @@
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
     // --- Dashboard & Charts ---
-    async function loadDashboard() {
-      const data = await apiFetch('getDashboardData');
-      if (!data || !data.stats) return;
+    function loadDashboard() {
+      google.script.run.withSuccessHandler(data => {
+        document.getElementById('statTotalContract').innerText = (data.stats.totalContractValue || 0).toLocaleString() + ' ر.س';
+        document.getElementById('statCollected').innerText = (data.stats.totalCollected || 0).toLocaleString() + ' ر.س';
+        document.getElementById('statRemaining').innerText = (data.stats.totalRemaining || 0).toLocaleString() + ' ر.س';
+        document.getElementById('statExpenses').innerText = (data.stats.totalExpenses || 0).toLocaleString() + ' ر.س';
 
-      document.getElementById('statTotalContract').innerText = (data.stats.totalContractValue || 0).toLocaleString() + ' ر.س';
-      document.getElementById('statCollected').innerText = (data.stats.totalCollected || 0).toLocaleString() + ' ر.س';
-      document.getElementById('statRemaining').innerText = (data.stats.totalRemaining || 0).toLocaleString() + ' ر.س';
-      document.getElementById('statExpenses').innerText = (data.stats.totalExpenses || 0).toLocaleString() + ' ر.س';
+        renderChart(data.stats);
 
-      renderChart(data.stats);
+        const docList = document.getElementById('alertDocsList');
+        docList.innerHTML = data.expiringDocs.length ? data.expiringDocs.map(d => `<li class="p-2 bg-amber-50 text-amber-800 rounded-lg font-bold">📄 ${d['اسم الوثيقة']} (${d['تاريخ الانتهاء']})</li>`).join('') : '<p class="text-slate-400">لا توجد وثائق منتهية</p>';
 
-      const docList = document.getElementById('alertDocsList');
-      docList.innerHTML = (data.expiringDocs && data.expiringDocs.length) 
-        ? data.expiringDocs.map(d => `<li class="p-2 bg-amber-50 text-amber-800 rounded-lg font-bold">📄 ${d['اسم الوثيقة']} (${d['تاريخ الانتهاء']})</li>`).join('') 
-        : '<p class="text-slate-400">لا توجد وثائق منتهية</p>';
-
-      const iqamaList = document.getElementById('alertIqamaList');
-      iqamaList.innerHTML = (data.expiringIqamas && data.expiringIqamas.length) 
-        ? data.expiringIqamas.map(i => `<li class="p-2 bg-rose-50 text-rose-800 rounded-lg font-bold">👤 ${i['اسم الموظف']} (${i['تاريخ انتهاء الإقامة']})</li>`).join('') 
-        : '<p class="text-slate-400">جميع الإقامات سارية</p>';
+        const iqamaList = document.getElementById('alertIqamaList');
+        iqamaList.innerHTML = data.expiringIqamas.length ? data.expiringIqamas.map(i => `<li class="p-2 bg-rose-50 text-rose-800 rounded-lg font-bold">👤 ${i['اسم الموظف']} (${i['تاريخ انتهاء الإقامة']})</li>`).join('') : '<p class="text-slate-400">جميع الإقامات سارية</p>';
+      }).getDashboardData();
     }
 
     function renderChart(stats) {
@@ -780,13 +771,14 @@
     }
 
     // --- Projects logic ---
-    async function loadProjects() {
-      const projectsRes = await apiFetch('getData', { sheetName: 'المشاريع' });
-      const expensesRes = await apiFetch('getData', { sheetName: 'المصروفات' });
-
-      allProjects = projectsRes || [];
-      allExpenses = expensesRes || [];
-      renderProjectCards();
+    function loadProjects() {
+      google.script.run.withSuccessHandler(projects => {
+        allProjects = projects || [];
+        google.script.run.withSuccessHandler(expenses => {
+          allExpenses = expenses || [];
+          renderProjectCards();
+        }).getData('المصروفات');
+      }).getData('المشاريع');
     }
 
     function renderProjectCards() {
@@ -945,7 +937,7 @@
       openModal('projectModal');
     }
 
-    async function saveProjectForm(e) {
+    function saveProjectForm(e) {
       e.preventDefault();
 
       const record = {
@@ -962,16 +954,18 @@
         'حالة المشروع': document.getElementById('p_status').value
       };
 
-      await apiFetch('saveRecord', { sheetName: 'المشاريع', record });
-      closeModal('projectModal');
-      loadProjects();
+      google.script.run.withSuccessHandler(res => {
+        closeModal('projectModal');
+        loadProjects();
+      }).saveRecord('المشاريع', record);
     }
 
-    async function deleteProject(id) {
+    function deleteProject(id) {
       if (confirm('هل أنت تأكد من إزالة هذا المشروع من القائمة؟')) {
-        await apiFetch('deleteRecord', { sheetName: 'المشاريع', id });
-        closeModal('projectDetailsModal');
-        loadProjects();
+        google.script.run.withSuccessHandler(res => {
+          closeModal('projectDetailsModal');
+          loadProjects();
+        }).deleteRecord('المشاريع', id);
       }
     }
 
@@ -1042,82 +1036,46 @@
 
     // --- المصروفات ---
     function loadExpenses() {
-  // 1. جلب قائمة المشاريع للقائمة المنسدلة
-  google.script.run.withSuccessHandler(response => {
-    let projects = response;
-    
-    // فك النص إذا كانت البيانات قادمة كـ String
-    if (typeof projects === 'string') {
-      try { projects = JSON.parse(projects); } catch (e) { projects = []; }
-    }
-    
-    // استخراج المصفوفة إذا كانت ملفوفة داخل Object
-    if (projects && !Array.isArray(projects) && Array.isArray(projects.data)) {
-      projects = projects.data;
-    }
-
-    const select = document.getElementById('e_projectCode');
-    if (select) {
-      select.innerHTML = '<option value="">اختر المشروع</option>';
-      if (Array.isArray(projects)) {
-        projects.forEach(p => {
+      google.script.run.withSuccessHandler(projects => {
+        const select = document.getElementById('e_projectCode');
+        select.innerHTML = '<option value="">اختر المشروع</option>';
+        (projects || []).forEach(p => {
           select.innerHTML += `<option value="${p['كود المشروع']}">${p['كود المشروع']} - ${p['اسم المشروع']}</option>`;
         });
-      }
+      }).getData('المشاريع');
+
+      google.script.run.withSuccessHandler(expenses => {
+        allExpenses = expenses || [];
+        const tbody = document.getElementById('expensesTableBody');
+        tbody.innerHTML = '';
+        allExpenses.forEach(e => {
+          const fileBtn = e['رابط الفاتورة'] 
+            ? `<a href="${e['رابط الفاتورة']}" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-bold text-xs"><i class="fa-solid fa-paperclip"></i> المعاينة</a>`
+            : `<span class="text-slate-400 text-xs font-bold">لا يوجد</span>`;
+
+          tbody.innerHTML += `
+            <tr class="hover:bg-slate-50 font-semibold">
+              <td class="p-4 font-bold text-blue-600">${e['كود المشروع']}</td>
+              <td class="p-4">${e['بند المصروف']}</td>
+              <td class="p-4 text-rose-600 font-bold">${(parseFloat(e['المبلغ'])||0).toLocaleString()} ر.س</td>
+              <td class="p-4">${e['التاريخ']}</td>
+              <td class="p-4 text-xs text-slate-500 max-w-xs truncate">${e['ملاحظات'] || '-'}</td>
+              <td class="p-4 text-center">${fileBtn}</td>
+              <td class="p-4 text-center">
+                <div class="flex items-center justify-center gap-2">
+                  <button onclick="editExpense('${e['ID']}')" title="تعديل المصروف" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
+                    <i class="fa-solid fa-pen-to-square text-xs"></i>
+                  </button>
+                  <button onclick="deleteExpense('${e['ID']}')" title="حذف المصروف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+      }).getData('المصروفات');
     }
-  }).getData('المشاريع');
-
-  // 2. جلب قائمة المصروفات للجدول
-  google.script.run.withSuccessHandler(response => {
-    let expenses = response;
-
-    // فك النص إذا كانت البيانات قادمة كـ String
-    if (typeof expenses === 'string') {
-      try { expenses = JSON.parse(expenses); } catch (e) { expenses = []; }
-    }
-
-    // استخراج المصفوفة إذا كانت ملفوفة داخل Object
-    if (expenses && !Array.isArray(expenses) && Array.isArray(expenses.data)) {
-      expenses = expenses.data;
-    }
-
-    allExpenses = Array.isArray(expenses) ? expenses : [];
-    const tbody = document.getElementById('expensesTableBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-
-    allExpenses.forEach(e => {
-      // التحقق من وجود رابط الفاتورة بأكثر من مسمى محتمل
-      const fileUrl = e['رابط الفاتورة'] || e['الفاتورة'] || e['e_existing_file'];
-      
-      const fileBtn = fileUrl 
-        ? `<a href="${fileUrl}" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-bold text-xs"><i class="fa-solid fa-paperclip"></i> المعاينة</a>`
-        : `<span class="text-slate-400 text-xs font-bold">لا يوجد</span>`;
-
-      tbody.innerHTML += `
-        <tr class="hover:bg-slate-50 font-semibold">
-          <td class="p-4 font-bold text-blue-600">${e['كود المشروع'] || '-'}</td>
-          <td class="p-4">${e['بند المصروف'] || '-'}</td>
-          <td class="p-4 text-rose-600 font-bold">${(parseFloat(e['المبلغ'])||0).toLocaleString()} ر.س</td>
-          <td class="p-4">${e['التاريخ'] || '-'}</td>
-          <td class="p-4 text-xs text-slate-500 max-w-xs truncate">${e['ملاحظات'] || '-'}</td>
-          <td class="p-4 text-center">${fileBtn}</td>
-          <td class="p-4 text-center">
-            <div class="flex items-center justify-center gap-2">
-              <button onclick="editExpense('${e['ID']}')" title="تعديل المصروف" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
-                <i class="fa-solid fa-pen-to-square text-xs"></i>
-              </button>
-              <button onclick="deleteExpense('${e['ID']}')" title="حذف المصروف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
-                <i class="fa-solid fa-trash text-xs"></i>
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    });
-  }).getData('المصروفات');
-}
 
     function openNewExpenseModal() {
       document.getElementById('e_id').value = '';
@@ -1163,10 +1121,11 @@
       openModal('expenseModal');
     }
 
-    async function deleteExpense(id) {
+    function deleteExpense(id) {
       if (confirm('هل أنت تأكد من إزالة هذا المصروف؟')) {
-        await apiFetch('deleteRecord', { sheetName: 'المصروفات', id });
-        loadExpenses();
+        google.script.run.withSuccessHandler(res => {
+          loadExpenses();
+        }).deleteRecord('المصروفات', id);
       }
     }
 
@@ -1184,16 +1143,18 @@
         const file = fileInput.files[0];
         const base64Data = await convertFileToBase64(file);
         
-        const uploadRes = await apiFetch('uploadFileToDrive', {
-          fileName: file.name,
-          mimeType: file.type,
-          data: base64Data
+        const uploadRes = await new Promise(resolve => {
+          google.script.run.withSuccessHandler(resolve).uploadFileToDrive({
+            fileName: file.name,
+            mimeType: file.type,
+            data: base64Data
+          });
         });
 
-        if (uploadRes && uploadRes.success) {
+        if (uploadRes.success) {
           fileUrl = uploadRes.url;
         } else {
-          alert('تعذر رفع الفاتورة: ' + ((uploadRes && uploadRes.message) || 'خطأ غير معروف'));
+          alert('تعذر رفع الفاتورة: ' + uploadRes.message);
           submitBtn.disabled = false;
           submitBtn.innerText = 'حفظ البيانات';
           return;
@@ -1210,11 +1171,12 @@
         'رابط الفاتورة': fileUrl
       };
 
-      await apiFetch('saveRecord', { sheetName: 'المصروفات', record });
-      submitBtn.disabled = false;
-      submitBtn.innerText = 'حفظ البيانات';
-      closeModal('expenseModal');
-      loadExpenses();
+      google.script.run.withSuccessHandler(res => {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'حفظ البيانات';
+        closeModal('expenseModal');
+        loadExpenses();
+      }).saveRecord('المصروفات', record);
     }
 
     function convertFileToBase64(file) {
@@ -1227,55 +1189,56 @@
     }
 
     // --- الموظفين والرواتب ---
-    async function loadEmployees() {
-      const employees = await apiFetch('getData', { sheetName: 'الموظفين' });
-      allEmployees = employees || [];
-      const tbody = document.getElementById('employeesTableBody');
-      tbody.innerHTML = '';
+    function loadEmployees() {
+      google.script.run.withSuccessHandler(employees => {
+        allEmployees = employees || [];
+        const tbody = document.getElementById('employeesTableBody');
+        tbody.innerHTML = '';
 
-      if (allEmployees.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400 font-bold">لا يوجد موظفين مضافين حالياً</td></tr>`;
-        return;
-      }
-
-      const today = new Date();
-
-      allEmployees.forEach(emp => {
-        let iqamaStatusClass = 'bg-slate-100 text-slate-700';
-        if (emp['تاريخ انتهاء الإقامة']) {
-          const expDate = new Date(emp['تاريخ انتهاء الإقامة']);
-          const diffDays = (expDate - today) / (1000 * 60 * 60 * 24);
-          if (diffDays <= 30 && diffDays >= 0) {
-            iqamaStatusClass = 'bg-amber-100 text-amber-800 font-bold';
-          } else if (diffDays < 0) {
-            iqamaStatusClass = 'bg-rose-100 text-rose-800 font-bold';
-          }
+        if (allEmployees.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400 font-bold">لا يوجد موظفين مضافين حالياً</td></tr>`;
+          return;
         }
 
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50 font-semibold">
-            <td class="p-4 font-bold text-blue-600">${emp['رقم الموظف']}</td>
-            <td class="p-4">${emp['اسم الموظف']}</td>
-            <td class="p-4">${emp['رقم الهوية']}</td>
-            <td class="p-4">${emp['المهنة']}</td>
-            <td class="p-4 font-bold text-slate-800">${(parseFloat(emp['الراتب الأساسي'])||0).toLocaleString()} ر.س</td>
-            <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs ${iqamaStatusClass}">${emp['تاريخ انتهاء الإقامة'] || '-'}</span></td>
-            <td class="p-4 text-center">
-              <div class="flex items-center justify-center gap-2">
-                <button onclick="openSalarySlipModal('${emp['ID']}')" title="مسير راتب" class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center gap-1 font-bold text-xs transition">
-                  <i class="fa-solid fa-file-invoice-dollar"></i> مسير راتب
-                </button>
-                <button onclick="editEmployee('${emp['ID']}')" title="تعديل الموظف" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-pen-to-square text-xs"></i>
-                </button>
-                <button onclick="deleteEmployee('${emp['ID']}')" title="حذف الموظف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-trash text-xs"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      });
+        const today = new Date();
+
+        allEmployees.forEach(emp => {
+          let iqamaStatusClass = 'bg-slate-100 text-slate-700';
+          if (emp['تاريخ انتهاء الإقامة']) {
+            const expDate = new Date(emp['تاريخ انتهاء الإقامة']);
+            const diffDays = (expDate - today) / (1000 * 60 * 60 * 24);
+            if (diffDays <= 30 && diffDays >= 0) {
+              iqamaStatusClass = 'bg-amber-100 text-amber-800 font-bold';
+            } else if (diffDays < 0) {
+              iqamaStatusClass = 'bg-rose-100 text-rose-800 font-bold';
+            }
+          }
+
+          tbody.innerHTML += `
+            <tr class="hover:bg-slate-50 font-semibold">
+              <td class="p-4 font-bold text-blue-600">${emp['رقم الموظف']}</td>
+              <td class="p-4">${emp['اسم الموظف']}</td>
+              <td class="p-4">${emp['رقم الهوية']}</td>
+              <td class="p-4">${emp['المهنة']}</td>
+              <td class="p-4 font-bold text-slate-800">${(parseFloat(emp['الراتب الأساسي'])||0).toLocaleString()} ر.س</td>
+              <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs ${iqamaStatusClass}">${emp['تاريخ انتهاء الإقامة'] || '-'}</span></td>
+              <td class="p-4 text-center">
+                <div class="flex items-center justify-center gap-2">
+                  <button onclick="openSalarySlipModal('${emp['ID']}')" title="مسير راتب" class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center gap-1 font-bold text-xs transition">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> مسير راتب
+                  </button>
+                  <button onclick="editEmployee('${emp['ID']}')" title="تعديل الموظف" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
+                    <i class="fa-solid fa-pen-to-square text-xs"></i>
+                  </button>
+                  <button onclick="deleteEmployee('${emp['ID']}')" title="حذف الموظف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+      }).getData('الموظفين');
     }
 
     function openNewEmployeeModal() {
@@ -1311,7 +1274,7 @@
       openModal('employeeModal');
     }
 
-    async function saveEmployee(e) {
+    function saveEmployee(e) {
       e.preventDefault();
 
       const record = {
@@ -1326,15 +1289,17 @@
         'فصيلة الدم': document.getElementById('emp_blood').value
       };
 
-      await apiFetch('saveRecord', { sheetName: 'الموظفين', record });
-      closeModal('employeeModal');
-      loadEmployees();
+      google.script.run.withSuccessHandler(res => {
+        closeModal('employeeModal');
+        loadEmployees();
+      }).saveRecord('الموظفين', record);
     }
 
-    async function deleteEmployee(id) {
+    function deleteEmployee(id) {
       if (confirm('هل أنت تأكد من إزالة هذا الموظف؟')) {
-        await apiFetch('deleteRecord', { sheetName: 'الموظفين', id });
-        loadEmployees();
+        google.script.run.withSuccessHandler(res => {
+          loadEmployees();
+        }).deleteRecord('الموظفين', id);
       }
     }
 
@@ -1438,42 +1403,43 @@
     }
 
     // --- 5. العقود والخطابات ---
-    async function loadLetters() {
-      const letters = await apiFetch('getData', { sheetName: 'العقود والخطابات' });
-      allLetters = letters || [];
-      const tbody = document.getElementById('lettersTableBody');
-      tbody.innerHTML = '';
+    function loadLetters() {
+      google.script.run.withSuccessHandler(letters => {
+        allLetters = letters || [];
+        const tbody = document.getElementById('lettersTableBody');
+        tbody.innerHTML = '';
 
-      if (allLetters.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400 font-bold">لا يوجد خطابات أو عقود مضافة حالياً</td></tr>`;
-        return;
-      }
+        if (allLetters.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400 font-bold">لا يوجد خطابات أو عقود مضافة حالياً</td></tr>`;
+          return;
+        }
 
-      allLetters.forEach(l => {
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50 font-semibold">
-            <td class="p-4 font-bold text-slate-800">${l['اسم الخطاب']}</td>
-            <td class="p-4">${l['الجهة'] || '-'}</td>
-            <td class="p-4">${l['تاريخ الخطاب'] || '-'}</td>
-            <td class="p-4 text-center">
-              <div class="flex items-center justify-center gap-2">
-                <button onclick="previewFile('${l['رابط الملف']}')" title="معاينة" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-eye text-xs"></i>
-                </button>
-                <button onclick="printFile('${l['رابط الملف']}')" title="طباعة" class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center justify-center transition">
-                  <i class="fa-solid fa-print text-xs"></i>
-                </button>
-                <button onclick="editLetter('${l['ID']}')" title="تعديل" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-pen-to-square text-xs"></i>
-                </button>
-                <button onclick="deleteLetter('${l['ID']}')" title="حذف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-trash text-xs"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      });
+        allLetters.forEach(l => {
+          tbody.innerHTML += `
+            <tr class="hover:bg-slate-50 font-semibold">
+              <td class="p-4 font-bold text-slate-800">${l['اسم الخطاب']}</td>
+              <td class="p-4">${l['الجهة'] || '-'}</td>
+              <td class="p-4">${l['تاريخ الخطاب'] || '-'}</td>
+              <td class="p-4 text-center">
+                <div class="flex items-center justify-center gap-2">
+                  <button onclick="previewFile('${l['رابط الملف']}')" title="معاينة" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition">
+                    <i class="fa-solid fa-eye text-xs"></i>
+                  </button>
+                  <button onclick="printFile('${l['رابط الملف']}')" title="طباعة" class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center justify-center transition">
+                    <i class="fa-solid fa-print text-xs"></i>
+                  </button>
+                  <button onclick="editLetter('${l['ID']}')" title="تعديل" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
+                    <i class="fa-solid fa-pen-to-square text-xs"></i>
+                  </button>
+                  <button onclick="deleteLetter('${l['ID']}')" title="حذف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+      }).getData('العقود والخطابات');
     }
 
     function openNewLetterModal() {
@@ -1528,16 +1494,18 @@
       if (fileInput.files.length > 0) {
         const file = fileInput.files[0];
         const base64Data = await convertFileToBase64(file);
-        const uploadRes = await apiFetch('uploadFileToDrive', {
-          fileName: file.name,
-          mimeType: file.type,
-          data: base64Data
+        const uploadRes = await new Promise(resolve => {
+          google.script.run.withSuccessHandler(resolve).uploadFileToDrive({
+            fileName: file.name,
+            mimeType: file.type,
+            data: base64Data
+          });
         });
 
-        if (uploadRes && uploadRes.success) {
+        if (uploadRes.success) {
           fileUrl = uploadRes.url;
         } else {
-          alert('تعذر رفع الملف: ' + ((uploadRes && uploadRes.message) || 'خطأ غير معروف'));
+          alert('تعذر رفع الملف: ' + uploadRes.message);
           submitBtn.disabled = false;
           submitBtn.innerText = 'حفظ البيانات';
           return;
@@ -1552,78 +1520,81 @@
         'رابط الملف': fileUrl
       };
 
-      await apiFetch('saveRecord', { sheetName: 'العقود والخطابات', record });
-      submitBtn.disabled = false;
-      submitBtn.innerText = 'حفظ البيانات';
-      closeModal('letterModal');
-      loadLetters();
+      google.script.run.withSuccessHandler(res => {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'حفظ البيانات';
+        closeModal('letterModal');
+        loadLetters();
+      }).saveRecord('العقود والخطابات', record);
     }
 
-    async function deleteLetter(id) {
+    function deleteLetter(id) {
       if (confirm('هل أنت تأكد من إزالة هذا الخطاب / العقد؟')) {
-        await apiFetch('deleteRecord', { sheetName: 'العقود والخطابات', id });
-        loadLetters();
+        google.script.run.withSuccessHandler(res => {
+          loadLetters();
+        }).deleteRecord('العقود والخطابات', id);
       }
     }
 
     // --- 6. وثائق المؤسسة ---
-    async function loadOrgDocs() {
-      const docs = await apiFetch('getData', { sheetName: 'وثائق المؤسسة' });
-      allOrgDocs = docs || [];
-      const container = document.getElementById('orgDocsCardsContainer');
-      container.innerHTML = '';
+    function loadOrgDocs() {
+      google.script.run.withSuccessHandler(docs => {
+        allOrgDocs = docs || [];
+        const container = document.getElementById('orgDocsCardsContainer');
+        container.innerHTML = '';
 
-      if (allOrgDocs.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 font-bold">لا يوجد وثائق مضافة حالياً. اضغط على زر "إضافة وثيقة جديدة".</div>`;
-        return;
-      }
-
-      const today = new Date();
-
-      allOrgDocs.forEach(d => {
-        let statusBadge = 'bg-emerald-100 text-emerald-800';
-        let statusText = 'سارية';
-
-        if (d['تاريخ الانتهاء']) {
-          const expDate = new Date(d['تاريخ الانتهاء']);
-          const diffDays = (expDate - today) / (1000 * 60 * 60 * 24);
-          if (diffDays <= 30 && diffDays >= 0) {
-            statusBadge = 'bg-amber-100 text-amber-800';
-            statusText = 'قريبة الانتهاء';
-          } else if (diffDays < 0) {
-            statusBadge = 'bg-rose-100 text-rose-800';
-            statusText = 'منتهية';
-          }
+        if (allOrgDocs.length === 0) {
+          container.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 font-bold">لا يوجد وثائق مضافة حالياً. اضغط على زر "إضافة وثيقة جديدة".</div>`;
+          return;
         }
 
-        container.innerHTML += `
-          <div class="bg-white rounded-2xl p-5 border shadow-sm flex flex-col justify-between border-t-4 border-t-blue-600">
-            <div>
-              <div class="flex justify-between items-start mb-3">
-                <h3 class="font-black text-lg text-slate-800">${d['اسم الوثيقة']}</h3>
-                <span class="text-xs px-2.5 py-1 rounded-full font-bold ${statusBadge}">${statusText}</span>
+        const today = new Date();
+
+        allOrgDocs.forEach(d => {
+          let statusBadge = 'bg-emerald-100 text-emerald-800';
+          let statusText = 'سارية';
+
+          if (d['تاريخ الانتهاء']) {
+            const expDate = new Date(d['تاريخ الانتهاء']);
+            const diffDays = (expDate - today) / (1000 * 60 * 60 * 24);
+            if (diffDays <= 30 && diffDays >= 0) {
+              statusBadge = 'bg-amber-100 text-amber-800';
+              statusText = 'قريبة الانتهاء';
+            } else if (diffDays < 0) {
+              statusBadge = 'bg-rose-100 text-rose-800';
+              statusText = 'منتهية';
+            }
+          }
+
+          container.innerHTML += `
+            <div class="bg-white rounded-2xl p-5 border shadow-sm flex flex-col justify-between border-t-4 border-t-blue-600">
+              <div>
+                <div class="flex justify-between items-start mb-3">
+                  <h3 class="font-black text-lg text-slate-800">${d['اسم الوثيقة']}</h3>
+                  <span class="text-xs px-2.5 py-1 rounded-full font-bold ${statusBadge}">${statusText}</span>
+                </div>
+                <div class="text-xs text-slate-600 mb-4 font-semibold">
+                  <p><i class="fa-solid fa-calendar-xmark text-slate-400 w-4"></i> <strong>تاريخ الانتهاء:</strong> ${d['تاريخ الانتهاء'] || '-'}</p>
+                </div>
               </div>
-              <div class="text-xs text-slate-600 mb-4 font-semibold">
-                <p><i class="fa-solid fa-calendar-xmark text-slate-400 w-4"></i> <strong>تاريخ الانتهاء:</strong> ${d['تاريخ الانتهاء'] || '-'}</p>
+              <div class="pt-3 border-t flex items-center justify-end gap-2">
+                <button onclick="previewFile('${d['رابط الوثيقة']}')" title="معاينة" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold transition flex items-center gap-1">
+                  <i class="fa-solid fa-eye"></i> معاينة
+                </button>
+                <button onclick="printFile('${d['رابط الوثيقة']}')" title="طباعة" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold transition flex items-center gap-1">
+                  <i class="fa-solid fa-print"></i> طباعة
+                </button>
+                <button onclick="editOrgDoc('${d['ID']}')" title="تعديل" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
+                  <i class="fa-solid fa-pen-to-square text-xs"></i>
+                </button>
+                <button onclick="deleteOrgDoc('${d['ID']}')" title="حذف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
+                  <i class="fa-solid fa-trash text-xs"></i>
+                </button>
               </div>
             </div>
-            <div class="pt-3 border-t flex items-center justify-end gap-2">
-              <button onclick="previewFile('${d['رابط الوثيقة']}')" title="معاينة" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold transition flex items-center gap-1">
-                <i class="fa-solid fa-eye"></i> معاينة
-              </button>
-              <button onclick="printFile('${d['رابط الوثيقة']}')" title="طباعة" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold transition flex items-center gap-1">
-                <i class="fa-solid fa-print"></i> طباعة
-              </button>
-              <button onclick="editOrgDoc('${d['ID']}')" title="تعديل" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
-                <i class="fa-solid fa-pen-to-square text-xs"></i>
-              </button>
-              <button onclick="deleteOrgDoc('${d['ID']}')" title="حذف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
-                <i class="fa-solid fa-trash text-xs"></i>
-              </button>
-            </div>
-          </div>
-        `;
-      });
+          `;
+        });
+      }).getData('وثائق المؤسسة');
     }
 
     function openNewOrgDocModal() {
@@ -1676,16 +1647,18 @@
       if (fileInput.files.length > 0) {
         const file = fileInput.files[0];
         const base64Data = await convertFileToBase64(file);
-        const uploadRes = await apiFetch('uploadFileToDrive', {
-          fileName: file.name,
-          mimeType: file.type,
-          data: base64Data
+        const uploadRes = await new Promise(resolve => {
+          google.script.run.withSuccessHandler(resolve).uploadFileToDrive({
+            fileName: file.name,
+            mimeType: file.type,
+            data: base64Data
+          });
         });
 
-        if (uploadRes && uploadRes.success) {
+        if (uploadRes.success) {
           fileUrl = uploadRes.url;
         } else {
-          alert('تعذر رفع الملف: ' + ((uploadRes && uploadRes.message) || 'خطأ غير معروف'));
+          alert('تعذر رفع الملف: ' + uploadRes.message);
           submitBtn.disabled = false;
           submitBtn.innerText = 'حفظ البيانات';
           return;
@@ -1699,17 +1672,19 @@
         'رابط الوثيقة': fileUrl
       };
 
-      await apiFetch('saveRecord', { sheetName: 'وثائق المؤسسة', record });
-      submitBtn.disabled = false;
-      submitBtn.innerText = 'حفظ البيانات';
-      closeModal('orgDocModal');
-      loadOrgDocs();
+      google.script.run.withSuccessHandler(res => {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'حفظ البيانات';
+        closeModal('orgDocModal');
+        loadOrgDocs();
+      }).saveRecord('وثائق المؤسسة', record);
     }
 
-    async function deleteOrgDoc(id) {
+    function deleteOrgDoc(id) {
       if (confirm('هل أنت تأكد من إزالة هذه الوثيقة؟')) {
-        await apiFetch('deleteRecord', { sheetName: 'وثائق المؤسسة', id });
-        loadOrgDocs();
+        google.script.run.withSuccessHandler(res => {
+          loadOrgDocs();
+        }).deleteRecord('وثائق المؤسسة', id);
       }
     }
 
@@ -1761,36 +1736,37 @@
     }
 
     // --- 7. إدارة المستخدمين ---
-    async function loadUsers() {
-      const users = await apiFetch('getData', { sheetName: 'المستخدمين' });
-      allUsers = users || [];
-      const tbody = document.getElementById('usersTableBody');
-      tbody.innerHTML = '';
+    function loadUsers() {
+      google.script.run.withSuccessHandler(users => {
+        allUsers = users || [];
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = '';
 
-      if (allUsers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400 font-bold">لا يوجد مستخدمين مضافين</td></tr>`;
-        return;
-      }
+        if (allUsers.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400 font-bold">لا يوجد مستخدمين مضافين</td></tr>`;
+          return;
+        }
 
-      allUsers.forEach(u => {
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50 font-semibold">
-            <td class="p-4 font-bold text-slate-800">${u['الاسم']}</td>
-            <td class="p-4">${u['البريد الإلكتروني']}</td>
-            <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">${u['الدور'] || 'مستخدم'}</span></td>
-            <td class="p-4 text-center">
-              <div class="flex items-center justify-center gap-2">
-                <button onclick="editUser('${u['ID']}')" title="تعديل" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-pen-to-square text-xs"></i>
-                </button>
-                <button onclick="deleteUser('${u['ID']}')" title="حذف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-trash text-xs"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      });
+        allUsers.forEach(u => {
+          tbody.innerHTML += `
+            <tr class="hover:bg-slate-50 font-semibold">
+              <td class="p-4 font-bold text-slate-800">${u['الاسم']}</td>
+              <td class="p-4">${u['البريد الإلكتروني']}</td>
+              <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">${u['الدور'] || 'مستخدم'}</span></td>
+              <td class="p-4 text-center">
+                <div class="flex items-center justify-center gap-2">
+                  <button onclick="editUser('${u['ID']}')" title="تعديل" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
+                    <i class="fa-solid fa-pen-to-square text-xs"></i>
+                  </button>
+                  <button onclick="deleteUser('${u['ID']}')" title="حذف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+      }).getData('المستخدمين');
     }
 
     function openNewUserModal() {
@@ -1818,7 +1794,7 @@
       openModal('userModal');
     }
 
-    async function saveUser(e) {
+    function saveUser(e) {
       e.preventDefault();
 
       const record = {
@@ -1829,15 +1805,17 @@
         'الدور': document.getElementById('u_role').value
       };
 
-      await apiFetch('saveRecord', { sheetName: 'المستخدمين', record });
-      closeModal('userModal');
-      loadUsers();
+      google.script.run.withSuccessHandler(res => {
+        closeModal('userModal');
+        loadUsers();
+      }).saveRecord('المستخدمين', record);
     }
 
-    async function deleteUser(id) {
+    function deleteUser(id) {
       if (confirm('هل أنت تأكد من إزالة هذا المستخدم؟')) {
-        await apiFetch('deleteRecord', { sheetName: 'المستخدمين', id });
-        loadUsers();
+        google.script.run.withSuccessHandler(res => {
+          loadUsers();
+        }).deleteRecord('المستخدمين', id);
       }
     }
 
