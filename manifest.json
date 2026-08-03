@@ -1,15 +1,20 @@
 {
-  "name": "مؤسسة حسن خالد حسن فران للمقاولات",
-  "short_name": "مؤسسة فران",
+  "name": "تطبيق إدارة المشاريع والموظفين",
+  "short_name": "التطبيق",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0f172a",
+  "background_color": "#ffffff",
   "theme_color": "#2563eb",
   "icons": [
     {
-      "src": "./icon.png",
-      "sizes": "192x192 512x512",
-      "type": "image/png",
+      "src": "https://cdn-icons-png.flaticon.com/512/1041/1041916.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1041/1041916.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
 }
