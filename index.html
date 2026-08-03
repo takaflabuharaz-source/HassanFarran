@@ -677,23 +677,38 @@
       }
     });
 
-    function handleLogin(e) {
-      e.preventDefault();
-      const email = document.getElementById('loginEmail').value;
-      const password = document.getElementById('loginPassword').value;
+   async function handleLogin(event) {
+  event.preventDefault(); // منع إعادة تحميل الصفحة
+  
+  const email = document.getElementById('emailInput').value; // غير المعرف حسب كودك
+  const password = document.getElementById('passwordInput').value;
 
-      google.script.run.withSuccessHandler(res => {
-        if (res.success) {
-          currentUser = res.user;
-          localStorage.setItem('app_user', JSON.stringify(currentUser));
-          document.getElementById('loginScreen').classList.add('hidden');
-          document.getElementById('appScreen').classList.remove('hidden');
-          document.getElementById('userRoleBadge').innerText = currentUser.role;
-          document.getElementById('userRoleBadgeMobile').innerText = currentUser.role;
-          switchTab('dashboard');
-        } else {
-          alert(res.message);
-        }
+  const scriptURL = 'ضع_رابط_WEB_APP_هنا';
+
+  try {
+    const response = await fetch(scriptURL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'login',
+        email: email,
+        password: password
+      })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      // إخفاء شاشة الدخول وإظهار الشاشة الرئيسية
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('mainApp').classList.remove('hidden');
+    } else {
+      alert('اسم المستخدم أو كلمة المرور غير صحيحة');
+    }
+  } catch (error) {
+    console.error('Error during login:', error);
+    alert('حدث خطأ أثناء الاتصال بالسيرفر');
+  }
+}
       }).loginUser(email, password);
     }
 
