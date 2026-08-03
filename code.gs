@@ -6,8 +6,8 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  if (e && e.parameter && e.parameter.action === 'getAllInitialData') {
-    const data = getAllInitialData();
+  if (e && e.parameter && e.parameter.action === 'getAllData') {
+    const data = getAllAppData();
     return ContentService
       .createTextOutput(JSON.stringify(data))
       .setMimeType(ContentService.MimeType.JSON);
@@ -25,15 +25,17 @@ function doPost(e) {
     var contents = JSON.parse(e.postData.contents);
     
     if (contents.action === 'saveRecord') {
-      const res = saveRecord(contents.sheetName, contents.record);
+      var res = saveRecord(contents.sheetName, contents.record);
       return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
     }
+    
     if (contents.action === 'deleteRecord') {
-      const res = deleteRecord(contents.sheetName, contents.id);
+      var res = deleteRecord(contents.sheetName, contents.id);
       return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
     }
+
     if (contents.action === 'uploadFile') {
-      const res = uploadFileToDrive(contents.fileData);
+      var res = uploadFileToDrive(contents.fileData);
       return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -46,20 +48,6 @@ function doPost(e) {
       .createTextOutput(JSON.stringify({ "result": "error", "message": error.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
-}
-
-// دالة تسريع جلب البيانات دفعة واحدة بدلاً من الطلبات المتكررة
-function getAllInitialData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = ['المشاريع', 'المصروفات', 'الموظفين', 'مسير الرواتب', 'العقود والخطابات', 'وثائق الشركة', 'المستخدمين'];
-  let result = {};
-
-  sheets.forEach(name => {
-    result[name] = getData(name);
-  });
-
-  result['dashboard'] = getDashboardData();
-  return result;
 }
 
 // تهيئة الجداول وتحديث الأعمدة
@@ -87,7 +75,19 @@ function setupDatabase() {
   return { status: 'success', message: 'تمت تهيئة الجداول بنجاح' };
 }
 
-// دالة رفع الملفات إلى Google Drive وإرجاع الرابط
+// دالة جلب كافة بيانات القاعدة بطلب واحد تسريعي الشديد (Single Batch Fetch)
+function getAllAppData() {
+  const sheetNames = ['المشاريع', 'المصروفات', 'الموظفين', 'العقود والخطابات', 'وثائق الشركة', 'المستخدمين'];
+  const result = {};
+  
+  sheetNames.forEach(name => {
+    result[name] = getData(name);
+  });
+  
+  return result;
+}
+
+// دالة رفع الملفات إلى Google Drive
 function uploadFileToDrive(fileData) {
   try {
     const folderName = "فواتير ومستندات المؤسسة";
@@ -142,7 +142,7 @@ function checkLogin(email, password) {
   return { success: false, message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" };
 }
 
-// جلب البيانات من أي شيت
+// جلب البيانات من شيت محدد
 function getData(sheetName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
@@ -171,9 +171,12 @@ function getData(sheetName) {
 // حفظ أو تعديل سجل
 function saveRecord(sheetName, record) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return { success: false, message: 'الصفحة غير موجودة' };
-
+  let sheet = ss.getSheetByName(sheetName);
+  if(!sheet) {
+    setupDatabase();
+    sheet = ss.getSheetByName(sheetName);
+  }
+  
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
@@ -201,8 +204,8 @@ function saveRecord(sheetName, record) {
 function deleteRecord(sheetName, id) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return { success: false, message: 'الصفحة غير موجودة' };
-
+  if(!sheet) return { success: false, message: 'الجدول غير موجود' };
+  
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const idIndex = headers.indexOf('ID');
