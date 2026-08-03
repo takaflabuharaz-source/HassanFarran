@@ -3,19 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Data URI Manifest لإخفاء الشريط بدون ملف خارجي -->
-<link rel="manifest" href='data:application/manifest+json,{
-  "short_name": "مؤسسة",
-  "name": "مؤسسة حسن خالد فران",
-  "start_url": ".",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff"
-}'>
-
-<!-- لدعم أجهزة الآيفون (iOS) -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href='data:application/manifest+json,{
+    "short_name": "مؤسسة",
+    "name": "مؤسسة حسن خالد فران",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#ffffff"
+  }'>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>نظام إدارة مؤسسة حسن خالد حسن فران للمقاولات</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -36,7 +33,7 @@
           <i class="fa-solid fa-building-user"></i>
         </div>
         <h1 class="text-xl font-black text-slate-800">مؤسسة حسن خالد حسن فران</h1>
-        <p class="text-sm text-slate-500 font-bold mt-1">للمقاولات العامة</p>
+        <p class="text-sm text-slate-500 font-bold mt-1">لالمقاولات العامة</p>
       </div>
       <form onsubmit="handleLogin(event)" class="space-y-4">
         <div>
@@ -47,7 +44,7 @@
           <label class="block text-sm font-bold text-slate-700 mb-1">كلمة المرور</label>
           <input type="password" id="loginPassword" required value="123456" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
         </div>
-        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">تسجيل الدخول</button>
+        <button type="submit" id="loginBtn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">تسجيل الدخول</button>
       </form>
     </div>
   </div>
@@ -645,7 +642,7 @@
     let allUsers = [];
     let chartInstance = null;
 
-    // استعادة الجلسة والتبويب عند بداية التحميل (Refresh)
+    // استعادة الجلسة عند بداية التحميل
     window.addEventListener('DOMContentLoaded', () => {
       const savedUser = localStorage.getItem('app_user');
       const savedTab = localStorage.getItem('app_tab') || 'dashboard';
@@ -654,7 +651,7 @@
         currentUser = JSON.parse(savedUser);
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('appScreen').classList.remove('hidden');
-        document.getElementById('userRoleBadge').innerText = currentUser.role;
+        document.getElementById('userRoleBadge').innerText = currentUser.role || 'مستخدم';
         switchTab(savedTab);
       }
     });
@@ -662,46 +659,70 @@
     async function handleLogin(event) {
       event.preventDefault();
       
-      const emailInput = document.getElementById('loginEmail') || document.getElementById('emailInput');
-      const passwordInput = document.getElementById('loginPassword') || document.getElementById('passwordInput');
+      const emailInput = document.getElementById('loginEmail');
+      const passwordInput = document.getElementById('loginPassword');
+      const loginBtn = document.getElementById('loginBtn');
 
       if (!emailInput || !passwordInput) {
         alert("خطأ: لم يتم العثور على حقول الإدخال في الصفحة");
         return;
       }
 
-      const scriptURL = 'https://script.google.com/macros/s/AKfycbypJX-l1k2n93kTHv-wqs9nr7QrZEXXu4i0zMExLOTZEiN2IH3KqcrylIHRt8hycY5ayA/exec';
+      loginBtn.disabled = true;
+      loginBtn.innerText = 'جاري التحقق...';
 
-      try {
-        // إرسال الطلب بدون headers معقدة لتجنب حظر CORS
-        const response = await fetch(scriptURL, {
-          method: 'POST',
-          mode: 'cors',
-          headers: {
-            'Content-Type': 'text/plain;charset=utf-8'
-          },
-          body: JSON.stringify({
-            action: 'login',
-            email: emailInput.value,
-            password: passwordInput.value
-          })
-        });
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
 
-        const result = await response.json();
+      // التحقق عبر google.script.run إذا كان التطبيق يعمل داخل بيئة Apps Script
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(users => {
+          loginBtn.disabled = false;
+          loginBtn.innerText = 'تسجيل الدخول';
+          
+          const user = (users || []).find(u => u['البريد الإلكتروني'] == email && u['كلمة المرور'] == password);
+          if (user) {
+            currentUser = { name: user['الاسم'], email: user['البريد الإلكتروني'], role: user['الدور'] };
+            localStorage.setItem('app_user', JSON.stringify(currentUser));
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('appScreen').classList.remove('hidden');
+            document.getElementById('userRoleBadge').innerText = currentUser.role;
+            switchTab('dashboard');
+          } else {
+            alert('اسم المستخدم أو كلمة المرور غير صحيحة');
+          }
+        }).getData('المستخدمين');
+      } else {
+        // التحقق عبر fetch POST إذا كان التطبيق مفصولاً
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbypJX-l1k2n93kTHv-wqs9nr7QrZEXXu4i0zMExLOTZEiN2IH3KqcrylIHRt8hycY5ayA/exec';
+        try {
+          const response = await fetch(scriptURL, {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'login', email: email, password: password })
+          });
 
-        if (result.success) {
-          currentUser = result.user || { role: 'مدير النظام' };
-          localStorage.setItem('app_user', JSON.stringify(currentUser));
-          document.getElementById('loginScreen').classList.add('hidden');
-          document.getElementById('appScreen').classList.remove('hidden');
-          document.getElementById('userRoleBadge').innerText = currentUser.role;
-          switchTab('dashboard');
-        } else {
-          alert(result.message || 'اسم المستخدم أو كلمة المرور غير صحيحة');
+          const result = await response.json();
+          loginBtn.disabled = false;
+          loginBtn.innerText = 'تسجيل الدخول';
+
+          if (result.success) {
+            currentUser = result.user;
+            localStorage.setItem('app_user', JSON.stringify(currentUser));
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('appScreen').classList.remove('hidden');
+            document.getElementById('userRoleBadge').innerText = currentUser.role;
+            switchTab('dashboard');
+          } else {
+            alert(result.message || 'اسم المستخدم أو كلمة المرور غير صحيحة');
+          }
+        } catch (error) {
+          loginBtn.disabled = false;
+          loginBtn.innerText = 'تسجيل الدخول';
+          console.error('Error during login:', error);
+          alert('حدث خطأ أثناء الاتصال بالسيرفر');
         }
-      } catch (error) {
-        console.error('Error during login:', error);
-        alert('حدث خطأ أثناء الاتصال بالسيرفر، تأكد من إعدادات النشر على Google Apps Script');
       }
     }
 
