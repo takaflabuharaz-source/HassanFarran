@@ -1,4 +1,13 @@
-function doGet() {
+function doGet(e) {
+  // إذا كان الطلب قادماً من GitHub يطلب بيانات محدده (مثلاً: ?action=getDashboard)
+  if (e && e.parameter && e.parameter.action === 'getDashboard') {
+    const data = getDashboardData();
+    return ContentService
+      .createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // إذا تم فتح الرابط مباشرة من جوجل
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('نظام إدارة مؤسسة حسن خالد حسن فران للمقاولات')
