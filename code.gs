@@ -1,29 +1,18 @@
 function doGet(e) {
-  // للتعامل مع طلبات البيانات الخارجية عبر GitHub عبر HTTP GET
-  if (e && e.parameter && e.parameter.action) {
-    let result = {};
-    const action = e.parameter.action;
-
-    try {
-      if (action === 'getDashboard') {
-        result = getDashboardData();
-      } else if (action === 'getData') {
-        result = getData(e.parameter.sheetName);
-      } else if (action === 'checkLogin') {
-        result = checkLogin(e.parameter.email, e.parameter.password);
-      } else {
-        result = { success: false, message: 'Action not recognized' };
-      }
-    } catch (err) {
-      result = { success: false, message: err.toString() };
-    }
-
+  if (e && e.parameter && e.parameter.action === 'getDashboard') {
+    const data = getDashboardData();
     return ContentService
-      .createTextOutput(JSON.stringify(result))
+      .createTextOutput(JSON.stringify(data))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  // في حال فتح الرابط مباشرة داخل جوجل
+  if (e && e.parameter && e.parameter.action === 'getAllInitialData') {
+    const data = getAllInitialData();
+    return ContentService
+      .createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('نظام إدارة مؤسسة حسن خالد حسن فران للمقاولات')
@@ -32,29 +21,45 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  let result = {};
   try {
-    const contents = JSON.parse(e.postData.contents);
-    const action = contents.action;
-
-    if (action === 'saveRecord') {
-      result = saveRecord(contents.sheetName, contents.record);
-    } else if (action === 'deleteRecord') {
-      result = deleteRecord(contents.sheetName, contents.id);
-    } else if (action === 'uploadFile') {
-      result = uploadFileToDrive(contents.fileData);
-    } else if (action === 'checkLogin') {
-      result = checkLogin(contents.email, contents.password);
-    } else {
-      result = { success: true, data: contents };
+    var contents = JSON.parse(e.postData.contents);
+    
+    if (contents.action === 'saveRecord') {
+      const res = saveRecord(contents.sheetName, contents.record);
+      return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
     }
-  } catch (error) {
-    result = { success: false, message: error.toString() };
-  }
+    if (contents.action === 'deleteRecord') {
+      const res = deleteRecord(contents.sheetName, contents.id);
+      return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
+    }
+    if (contents.action === 'uploadFile') {
+      const res = uploadFileToDrive(contents.fileData);
+      return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
+    }
 
-  return ContentService
-    .createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
+    return ContentService
+      .createTextOutput(JSON.stringify({ "result": "success", "data": contents }))
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ "result": "error", "message": error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// دالة تسريع جلب البيانات دفعة واحدة بدلاً من الطلبات المتكررة
+function getAllInitialData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ['المشاريع', 'المصروفات', 'الموظفين', 'مسير الرواتب', 'العقود والخطابات', 'وثائق الشركة', 'المستخدمين'];
+  let result = {};
+
+  sheets.forEach(name => {
+    result[name] = getData(name);
+  });
+
+  result['dashboard'] = getDashboardData();
+  return result;
 }
 
 // تهيئة الجداول وتحديث الأعمدة
@@ -65,8 +70,8 @@ function setupDatabase() {
     { name: 'المصروفات', headers: ['ID', 'كود المشروع', 'بند المصروف', 'المبلغ', 'التاريخ', 'ملاحظات', 'رابط الفاتورة'] },
     { name: 'الموظفين', headers: ['ID', 'رقم الموظف', 'اسم الموظف', 'رقم الهوية', 'تاريخ الميلاد', 'فصيلة الدم', 'تاريخ انتهاء الإقامة', 'المهنة', 'الراتب الأساسي'] },
     { name: 'مسير الرواتب', headers: ['ID', 'رقم الموظف', 'اسم الموظف', 'الشهر/السنة', 'الراتب الأساسي', 'الخصومات', 'الإضافي', 'صافي الراتب', 'حالة الصرف', 'تاريخ الصرف'] },
-    { name: 'العقود والخطابات', headers: ['ID', 'اسم العقد', 'الطرف الثاني', 'التاريخ', 'رابط المستند'] },
-    { name: 'وثائق الشركة', headers: ['ID', 'اسم الوثيقة', 'رقم الوثيقة', 'تاريخ الانتهاء', 'رابط المستند'] },
+    { name: 'العقود والخطابات', headers: ['ID', 'اسم الخطاب', 'الجهة', 'تاريخ الخطاب', 'رابط الملف'] },
+    { name: 'وثائق الشركة', headers: ['ID', 'اسم الوثيقة', 'تاريخ الانتهاء', 'رابط المستند'] },
     { name: 'المستخدمين', headers: ['ID', 'الاسم', 'البريد الإلكتروني', 'كلمة المرور', 'الدور'] }
   ];
 
@@ -153,7 +158,6 @@ function getData(sheetName) {
     let obj = {};
     headers.forEach((h, index) => {
       if (!h) return;
-      
       let val = row[index];
       if (val instanceof Date) {
         val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
@@ -168,8 +172,8 @@ function getData(sheetName) {
 function saveRecord(sheetName, record) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return { success: false, message: 'الشيت غير موجود' };
-  
+  if (!sheet) return { success: false, message: 'الصفحة غير موجودة' };
+
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
@@ -197,6 +201,8 @@ function saveRecord(sheetName, record) {
 function deleteRecord(sheetName, id) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return { success: false, message: 'الصفحة غير موجودة' };
+
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const idIndex = headers.indexOf('ID');
@@ -255,13 +261,4 @@ function getDashboardData() {
     expiringIqamas,
     projects
   };
-}
-
-function savePayrollRecord(record) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName('مسير الرواتب');
-  if (!sheet) {
-    setupDatabase();
-  }
-  return saveRecord('مسير الرواتب', record);
 }
