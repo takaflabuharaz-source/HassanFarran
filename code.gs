@@ -1,12 +1,18 @@
-// ==========================================
-// نظام إدارة المؤسسة - Google Apps Script
-// ==========================================
+function doGet(e) {
+  if (e && e.parameter && e.parameter.action === 'getDashboard') {
+    const data = getDashboardData();
+    return ContentService
+      .createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 
-// إعدادات الشيتات والمجلدات
-const SPREADSHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
-const FOLDER_ID = ''; // ضع ID مجلد Google Drive المخصص لرفع المستندات والفواتير هنا إذا رغبت، أو اتركه فارغاً للحفظ في المجلد الرئيسي
+  if (e && e.parameter && e.parameter.action === 'getAllData') {
+    const data = getAllAppData();
+    return ContentService
+      .createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 
-function doGet() {
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('نظام إدارة مؤسسة حسن خالد حسن فران للمقاولات')
@@ -14,166 +20,253 @@ function doGet() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// دالة جلب البيانات العامة من أي شيت
-function getData(sheetName) {
+function doPost(e) {
   try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
-    if (!sheet) return [];
+    var contents = JSON.parse(e.postData.contents);
     
-    const data = sheet.getDataRange().getValues();
-    if (data.length <= 1) return [];
+    if (contents.action === 'saveRecord') {
+      var res = saveRecord(contents.sheetName, contents.record);
+      return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
+    }
     
-    const headers = data[0];
-    const rows = data.slice(1);
-    
-    return rows.map(row => {
-      let obj = {};
-      headers.forEach((header, index) => {
-        let val = row[index];
-        if (val instanceof Date) {
-          val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
-        }
-        obj[header] = val;
-      });
-      return obj;
-    });
+    if (contents.action === 'deleteRecord') {
+      var res = deleteRecord(contents.sheetName, contents.id);
+      return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (contents.action === 'uploadFile') {
+      var res = uploadFileToDrive(contents.fileData);
+      return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ "result": "success", "data": contents }))
+      .setMimeType(ContentService.MimeType.JSON);
+      
   } catch (error) {
-    Logger.log("Error in getData: " + error.toString());
-    return [];
+    return ContentService
+      .createTextOutput(JSON.stringify({ "result": "error", "message": error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-// دالة حفظ أو تحديث السجلات
-function saveRecord(sheetName, record) {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName(sheetName);
-    
+// تهيئة الجداول وتحديث الأعمدة
+function setupDatabase() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = [
+    { name: 'المشاريع', headers: ['ID', 'كود المشروع', 'اسم المشروع', 'العميل', 'الموقع', 'القيمة الاجمالية', 'المستخلص المحصل', 'مدير المشروع', 'تاريخ البدء', 'تاريخ النهاية', 'حالة المشروع'] },
+    { name: 'المصروفات', headers: ['ID', 'كود المشروع', 'بند المصروف', 'المبلغ', 'التاريخ', 'ملاحظات', 'رابط الفاتورة'] },
+    { name: 'الموظفين', headers: ['ID', 'رقم الموظف', 'اسم الموظف', 'رقم الهوية', 'تاريخ الميلاد', 'فصيلة الدم', 'تاريخ انتهاء الإقامة', 'المهنة', 'الراتب الأساسي'] },
+    { name: 'مسير الرواتب', headers: ['ID', 'رقم الموظف', 'اسم الموظف', 'الشهر/السنة', 'الراتب الأساسي', 'الخصومات', 'الإضافي', 'صافي الراتب', 'حالة الصرف', 'تاريخ الصرف'] },
+    { name: 'العقود والخطابات', headers: ['ID', 'اسم الخطاب', 'الجهة', 'تاريخ الخطاب', 'رابط الملف'] },
+    { name: 'وثائق الشركة', headers: ['ID', 'اسم الوثيقة', 'تاريخ الانتهاء', 'رابط المستند'] },
+    { name: 'المستخدمين', headers: ['ID', 'الاسم', 'البريد الإلكتروني', 'كلمة المرور', 'الدور'] }
+  ];
+
+  sheets.forEach(sheetInfo => {
+    let sheet = ss.getSheetByName(sheetInfo.name);
     if (!sheet) {
-      sheet = ss.insertSheet(sheetName);
+      sheet = ss.insertSheet(sheetInfo.name);
+      sheet.appendRow(sheetInfo.headers);
+      sheet.getRange(1, 1, 1, sheetInfo.headers.length).setFontWeight('bold').setBackground('#0f172a').setFontColor('#ffffff');
     }
-    
-    const data = sheet.getDataRange().getValues();
-    let headers = data.length > 0 ? data[0] : [];
-    
-    // إنشاء الهيدر إذا كان الشيت جديداً
-    if (headers.length === 0) {
-      headers = Object.keys(record);
-      sheet.appendRow(headers);
-    }
-    
-    // البحث عن السجل للتعديل أو الإضافة
-    let rowIndex = -1;
-    if (record.ID) {
-      for (let i = 1; i < data.length; i++) {
-        if (String(data[i][0]) === String(record.ID)) {
-          rowIndex = i + 1;
-          break;
-        }
-      }
-    } else {
-      record.ID = 'ID-' + new Date().getTime();
-    }
-    
-    const rowData = headers.map(header => record[header] !== undefined ? record[header] : '');
-    
-    if (rowIndex > 0) {
-      sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
-    } else {
-      sheet.appendRow(rowData);
-    }
-    
-    return { success: true, message: 'تم حفظ البيانات بنجاح', id: record.ID };
-  } catch (error) {
-    return { success: false, message: error.toString() };
-  }
+  });
+
+  return { status: 'success', message: 'تمت تهيئة الجداول بنجاح' };
 }
 
-// دالة حذف سجل
-function deleteRecord(sheetName, id) {
-  try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
-    if (!sheet) return { success: false, message: 'الشيت غير موجود' };
-    
-    const data = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]) === String(id)) {
-        sheet.deleteRow(i + 1);
-        return { success: true, message: 'تم الحذف بنجاح' };
-      }
-    }
-    return { success: false, message: 'لم يتم العثور على السجل' };
-  } catch (error) {
-    return { success: false, message: error.toString() };
-  }
+// دالة جلب كافة بيانات القاعدة
+function getAllAppData() {
+  const sheetNames = ['المشاريع', 'المصروفات', 'الموظفين', 'العقود والخطابات', 'وثائق الشركة', 'المستخدمين'];
+  const result = {};
+  
+  sheetNames.forEach(name => {
+    result[name] = getData(name);
+  });
+  
+  return result;
 }
 
-// دالة رفع الملفات إلى Google Drive
+// دالة رفع الملفات إلى Google Drive مع تحسين التوافق
 function uploadFileToDrive(fileData) {
   try {
-    const folder = FOLDER_ID ? DriveApp.getFolderById(FOLDER_ID) : DriveApp.getRootFolder();
+    const folderName = "فواتير ومستندات المؤسسة";
+    let folders = DriveApp.getFoldersByName(folderName);
+    let folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+
+    const contentType = fileData.mimeType || 'application/octet-stream';
+    var base64String = fileData.data;
+    if (base64String.indexOf(',') !== -1) {
+      base64String = base64String.split(',')[1];
+    }
     
-    // استخراج بيانات Base64
-    const splitData = fileData.data.split(',');
-    const contentType = splitData[0].split(';')[0].replace('data:', '');
-    const bytes = Utilities.base64Decode(splitData[1]);
+    const bytes = Utilities.base64Decode(base64String);
     const blob = Utilities.newBlob(bytes, contentType, fileData.fileName);
     
     const file = folder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
-    return {
-      success: true,
-      url: file.getUrl(),
-      fileId: file.getId()
-    };
+
+    return { success: true, url: file.getUrl() };
   } catch (error) {
     return { success: false, message: error.toString() };
   }
 }
 
-// دالة تصفية المصروفات بالمدى الزمني
-function getExpensesByDateRange(startDate, endDate) {
-  const allExpenses = getData('المصروفات');
-  if (!startDate && !endDate) return allExpenses;
+// تسجيل الدخول
+function checkLogin(email, password) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("المستخدمين");
+  if (!sheet) {
+    return { success: true, user: { email: email, role: 'مدير النظام' } }; 
+  }
+  
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return { success: true, user: { email: email, role: 'مدير النظام' } };
+  }
+  
+  var headers = data[0];
+  var emailIdx = headers.indexOf("البريد الإلكتروني");
+  var passIdx = headers.indexOf("كلمة المرور");
+  var roleIdx = headers.indexOf("الدور");
+  var nameIdx = headers.indexOf("الاسم");
+  
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][emailIdx]).trim() === String(email).trim() && 
+        String(data[i][passIdx]).trim() === String(password).trim()) {
+      return {
+        success: true,
+        user: {
+          name: data[i][nameIdx],
+          email: data[i][emailIdx],
+          role: data[i][roleIdx] || 'مدير النظام'
+        }
+      };
+    }
+  }
+  
+  return { success: false, message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" };
+}
 
-  const start = startDate ? new Date(startDate) : new Date('1970-01-01');
-  const end = endDate ? new Date(endDate) : new Date('2099-12-31');
-  end.setHours(23, 59, 59, 999);
-
-  return allExpenses.filter(item => {
-    if (!item['التاريخ']) return false;
-    const itemDate = new Date(item['التاريخ']);
-    return itemDate >= start && itemDate <= end;
+// جلب البيانات من شيت محدد
+function getData(sheetName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return [];
+  
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return []; 
+  
+  const headers = data[0].map(h => h ? h.toString().trim() : '');
+  const rows = data.slice(1).filter(row => row.some(cell => cell !== "" && cell !== null));
+  
+  return rows.map(row => {
+    let obj = {};
+    headers.forEach((h, index) => {
+      if (!h) return;
+      let val = row[index];
+      if (val instanceof Date) {
+        val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+      }
+      obj[h] = (val !== undefined && val !== null) ? val : "";
+    });
+    return obj;
   });
 }
 
-// المعالج الرئيسي للطلبات المباشرة عبر POST
-function doPost(e) {
-  try {
-    var contents = JSON.parse(e.postData.contents);
-    var action = contents.action;
-    var res = {};
-
-    if (action === 'getData') {
-      res = getData(contents.sheetName);
-    } else if (action === 'saveRecord') {
-      res = saveRecord(contents.sheetName, contents.record);
-    } else if (action === 'deleteRecord') {
-      res = deleteRecord(contents.sheetName, contents.id);
-    } else if (action === 'uploadFile') {
-      res = uploadFileToDrive(contents.fileData);
-    } else if (action === 'getExpensesByDateRange') {
-      res = getExpensesByDateRange(contents.startDate, contents.endDate);
-    } else {
-      res = { result: "error", message: "Action not recognized" };
-    }
-
-    return ContentService.createTextOutput(JSON.stringify(res))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ result: "error", message: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+// حفظ أو تعديل سجل
+function saveRecord(sheetName, record) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(sheetName);
+  if(!sheet) {
+    setupDatabase();
+    sheet = ss.getSheetByName(sheetName);
   }
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  if (record['ID']) {
+    const idIndex = headers.indexOf('ID');
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][idIndex]) === String(record['ID'])) {
+        headers.forEach((h, colIndex) => {
+          if (record[h] !== undefined) {
+            sheet.getRange(i + 1, colIndex + 1).setValue(record[h]);
+          }
+        });
+        return { success: true, message: 'تم تحديث البيانات بنجاح' };
+      }
+    }
+  }
+
+  record['ID'] = 'ID-' + new Date().getTime();
+  const rowToAppend = headers.map(h => record[h] !== undefined ? record[h] : '');
+  sheet.appendRow(rowToAppend);
+  return { success: true, message: 'تم الحفظ بنجاح' };
+}
+
+// حذف سجل
+function deleteRecord(sheetName, id) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+  if(!sheet) return { success: false, message: 'الجدول غير موجود' };
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const idIndex = headers.indexOf('ID');
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][idIndex]) === String(id)) {
+      sheet.deleteRow(i + 1);
+      return { success: true, message: 'تم الحذف بنجاح' };
+    }
+  }
+  return { success: false, message: 'لم يتم العثور على السجل' };
+}
+
+// بيانات لوحة التحكم
+function getDashboardData() {
+  const projects = getData('المشاريع');
+  const expenses = getData('المصروفات');
+  const docs = getData('وثائق الشركة');
+  const employees = getData('الموظفين');
+
+  let totalContractValue = 0;
+  let totalCollected = 0;
+  let totalExpenses = 0;
+
+  projects.forEach(p => {
+    totalContractValue += parseFloat(p['القيمة الاجمالية']) || 0;
+    totalCollected += parseFloat(p['المستخلص المحصل']) || 0;
+  });
+
+  expenses.forEach(e => {
+    totalExpenses += parseFloat(e['المبلغ']) || 0;
+  });
+
+  const today = new Date();
+  const expiringDocs = docs.filter(d => {
+    if (!d['تاريخ الانتهاء']) return false;
+    const exp = new Date(d['تاريخ الانتهاء']);
+    return (exp - today) / (1000 * 60 * 60 * 24) <= 30;
+  });
+
+  const expiringIqamas = employees.filter(emp => {
+    if (!emp['تاريخ انتهاء الإقامة']) return false;
+    const exp = new Date(emp['تاريخ انتهاء الإقامة']);
+    return (exp - today) / (1000 * 60 * 60 * 24) <= 30;
+  });
+
+  return {
+    stats: {
+      totalContractValue,
+      totalCollected,
+      totalRemaining: totalContractValue - totalCollected,
+      totalExpenses,
+      projectsCount: projects.length
+    },
+    expiringDocs,
+    expiringIqamas,
+    projects
+  };
 }
