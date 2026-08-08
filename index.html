@@ -1474,7 +1474,7 @@
       }
     }
 
-    // --- وثائق المؤسسة (مع رفع ملفات PDF والصور بشكل موثوق) ---
+    // --- وثائق المؤسسة (مُحدَّثة بإضافة أزرار الطباعة والمعاينة الكاملة) ---
     function renderOrgDocsCards() {
       const container = document.getElementById('orgDocsCardsContainer');
       container.innerHTML = '';
@@ -1502,8 +1502,15 @@
           }
         }
 
-        const url = d['رابط المستند'] || d['رابط الوثيقة'] || '';
-        const previewBtn = url ? `<a href="${url}" target="_blank" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold transition flex items-center gap-1"><i class="fa-solid fa-eye"></i> معاينة</a>` : '';
+        const fileUrl = d['رابط المستند'] || d['رابط الوثيقة'] || '';
+        
+        // زر معاينة المستند
+        const previewBtn = fileUrl 
+          ? `<a href="${fileUrl}" target="_blank" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold transition flex items-center gap-1"><i class="fa-solid fa-eye"></i> معاينة</a>`
+          : `<span class="text-xs text-slate-400 font-bold">بدون ملف</span>`;
+
+        // زر طباعة بيانات الوثيقة
+        const printSingleBtn = `<button onclick="printSingleOrgDoc('${d['ID']}')" title="طباعة الوثيقة" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold transition flex items-center gap-1"><i class="fa-solid fa-print"></i> طباعة</button>`;
 
         container.innerHTML += `
           <div class="bg-white rounded-2xl p-5 border shadow-sm flex flex-col justify-between border-t-4 border-t-blue-600">
@@ -1516,8 +1523,9 @@
                 <p><i class="fa-solid fa-calendar-xmark text-slate-400 w-4"></i> <strong>تاريخ الانتهاء:</strong> ${d['تاريخ الانتهاء'] || '-'}</p>
               </div>
             </div>
-            <div class="pt-3 border-t flex items-center justify-end gap-2">
+            <div class="pt-3 border-t flex items-center justify-end gap-2 flex-wrap">
               ${previewBtn}
+              ${printSingleBtn}
               <button onclick="editOrgDoc('${d['ID']}')" title="تعديل" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
                 <i class="fa-solid fa-pen-to-square text-xs"></i>
               </button>
@@ -1528,6 +1536,42 @@
           </div>
         `;
       });
+    }
+
+    function printSingleOrgDoc(id) {
+      const d = allOrgDocs.find(item => String(item['ID']) === String(id));
+      if (!d) return;
+
+      const fileUrl = d['رابط المستند'] || d['رابط الوثيقة'] || '#';
+      const printWin = window.open('', '', 'width=800,height=600');
+      printWin.document.write(`
+        <html dir="rtl" lang="ar">
+        <head>
+          <title>طباعة وثيقة - ${d['اسم الوثيقة']}</title>
+          <style>
+            body { font-family: 'Cairo', sans-serif; padding: 40px; color: #1e293b; text-align: center; }
+            .box { border: 2px solid #0f172a; border-radius: 12px; padding: 30px; max-w: 600px; margin: 0 auto; }
+            h1 { color: #0f172a; font-size: 22px; margin-bottom: 20px; }
+            .info { text-align: right; font-size: 16px; margin-bottom: 15px; line-height: 1.8; }
+            .footer { margin-top: 30px; font-size: 12px; color: #64748b; }
+          </style>
+        </head>
+        <body>
+          <div class="box">
+            <h1>مؤسسة حسن خالد حسن فران للمقاولات العامة</h1>
+            <hr style="margin-bottom:20px;">
+            <div class="info">
+              <p><strong>اسم الوثيقة:</strong> ${d['اسم الوثيقة'] || '-'}</p>
+              <p><strong>تاريخ الانتهاء:</strong> ${d['تاريخ الانتهاء'] || '-'}</p>
+              <p><strong>رابط المستند الرقمي:</strong> <a href="${fileUrl}" target="_blank">${fileUrl !== '#' ? 'فتح المستند' : 'لا يوجد ملف مرفق'}</a></p>
+            </div>
+            <div class="footer">تاريخ التصدير: ${new Date().toLocaleDateString('ar-SA')}</div>
+          </div>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
+      printWin.print();
     }
 
     function openNewOrgDocModal() {
