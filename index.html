@@ -6,6 +6,8 @@
   <title>نظام إدارة مؤسسة حسن خالد حسن فران للمقاولات</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- مكتبة تصدير ملفات Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -15,1111 +17,614 @@
 </head>
 <body class="bg-slate-100 text-slate-800">
 
-  <!-- شاشة تسجيل الدخول -->
-  <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-95 p-4">
-    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border-t-8 border-blue-600">
-      <div class="text-center mb-6">
-        <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl font-bold">
-          <i class="fa-solid fa-building-user"></i>
-        </div>
-        <h1 class="text-xl font-black text-slate-800">مؤسسة حسن خالد حسن فران</h1>
-        <p class="text-sm text-slate-500 font-bold mt-1">للمقاولات العامة</p>
-      </div>
-      <form onsubmit="handleLoginProcess(event)" class="space-y-4">
+  <!-- شريط التنقل العلوي -->
+  <header class="bg-slate-900 text-white sticky top-0 z-50 shadow-md">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-xl">ح</div>
         <div>
-          <label class="block text-sm font-bold text-slate-700 mb-1">البريد الإلكتروني</label>
-          <input type="email" id="loginEmail" required value="admin@farran.com" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+          <h1 class="font-bold text-sm md:text-base leading-tight">مؤسسة حسن خالد حسن فران للمقاولات</h1>
+          <p class="text-xs text-slate-400">نظام الإدارة المالية والتشغيلية الموحد</p>
         </div>
-        <div>
-          <label class="block text-sm font-bold text-slate-700 mb-1">كلمة المرور</label>
-          <input type="password" id="loginPassword" required value="123456" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
-        </div>
-        <button type="submit" id="login-btn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">تسجيل الدخول</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- التطبيق الرئيسي -->
-  <div id="appScreen" class="hidden min-h-screen flex flex-col md:flex-row">
-    <!-- القائمة الجانبية -->
-    <aside class="w-full md:w-64 bg-slate-900 text-slate-200 flex-shrink-0 flex flex-col justify-between">
-      <div>
-        <div class="p-5 border-b border-slate-800 text-center">
-          <h2 class="font-extrabold text-blue-400 text-lg">م. حسن فران للمقاولات</h2>
-          <span id="userRoleBadge" class="inline-block mt-2 bg-blue-900/80 text-blue-200 text-xs px-3 py-1 rounded-full font-bold">مدير النظام</span>
-        </div>
-        <nav class="p-4 space-y-1 text-sm font-semibold">
-          <button id="nav-dashboard" onclick="switchTab('dashboard')" class="w-full text-right px-4 py-3 rounded-xl hover:bg-slate-800 flex items-center gap-3 tab-btn tab-active">
-            <i class="fa-solid fa-chart-pie text-blue-400 w-5"></i> لوحة التحكم
-          </button>
-          <button id="nav-projects" onclick="switchTab('projects')" class="w-full text-right px-4 py-3 rounded-xl hover:bg-slate-800 flex items-center gap-3 tab-btn">
-            <i class="fa-solid fa-diagram-project text-blue-400 w-5"></i> إدارة المشاريع
-          </button>
-          <button id="nav-expenses" onclick="switchTab('expenses')" class="w-full text-right px-4 py-3 rounded-xl hover:bg-slate-800 flex items-center gap-3 tab-btn">
-            <i class="fa-solid fa-receipt text-blue-400 w-5"></i> قائمة المصروفات
-          </button>
-          <button id="nav-employees" onclick="switchTab('employees')" class="w-full text-right px-4 py-3 rounded-xl hover:bg-slate-800 flex items-center gap-3 tab-btn">
-            <i class="fa-solid fa-users text-blue-400 w-5"></i> الموظفين والرواتب
-          </button>
-          <button id="nav-letters" onclick="switchTab('letters')" class="w-full text-right px-4 py-3 rounded-xl hover:bg-slate-800 flex items-center gap-3 tab-btn">
-            <i class="fa-solid fa-file-contract text-blue-400 w-5"></i> العقود والخطابات
-          </button>
-          <button id="nav-orgDocs" onclick="switchTab('orgDocs')" class="w-full text-right px-4 py-3 rounded-xl hover:bg-slate-800 flex items-center gap-3 tab-btn">
-            <i class="fa-solid fa-folder-open text-blue-400 w-5"></i> وثائق المؤسسة
-          </button>
-          <button id="nav-users" onclick="switchTab('users')" class="w-full text-right px-4 py-3 rounded-xl hover:bg-slate-800 flex items-center gap-3 tab-btn">
-            <i class="fa-solid fa-user-shield text-blue-400 w-5"></i> إدارة المستخدمين
-          </button>
-        </nav>
       </div>
-      <div class="p-4 border-t border-slate-800">
-        <button onclick="logout()" class="w-full bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2 text-sm">
-          <i class="fa-solid fa-right-from-bracket"></i> تسجيل الخروج
+      <div class="flex items-center gap-2">
+        <button onclick="fetchAllData()" class="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-2 rounded-lg font-bold flex items-center gap-1 transition">
+          <i class="fa-solid fa-rotate"></i> تحديث البيانات
         </button>
       </div>
-    </aside>
-
-    <!-- المحتوى -->
-    <main class="flex-1 p-6 md:p-8 overflow-y-auto">
-      
-      <!-- 1. لوحة التحكم -->
-      <section id="dashboardView">
-        <h2 class="text-2xl font-black mb-6">لوحة التحكم والمخططات البيانية</h2>
-        
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div class="bg-white p-5 rounded-2xl shadow-sm border-r-4 border-r-blue-600">
-            <p class="text-xs font-bold text-slate-400">إجمالي قيم العقود</p>
-            <h3 id="statTotalContract" class="text-2xl font-black mt-2">0 ر.س</h3>
-          </div>
-          <div class="bg-white p-5 rounded-2xl shadow-sm border-r-4 border-r-emerald-500">
-            <p class="text-xs font-bold text-slate-400">المستخلصات المحصلة</p>
-            <h3 id="statCollected" class="text-2xl font-black text-emerald-600 mt-2">0 ر.س</h3>
-          </div>
-          <div class="bg-white p-5 rounded-2xl shadow-sm border-r-4 border-r-amber-500">
-            <p class="text-xs font-bold text-slate-400">المتبقي غير المحصل</p>
-            <h3 id="statRemaining" class="text-2xl font-black text-amber-600 mt-2">0 ر.س</h3>
-          </div>
-          <div class="bg-white p-5 rounded-2xl shadow-sm border-r-4 border-r-rose-500">
-            <p class="text-xs font-bold text-slate-400">إجمالي المصروفات</p>
-            <h3 id="statExpenses" class="text-2xl font-black text-rose-600 mt-2">0 ر.س</h3>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border">
-            <h3 class="font-bold text-lg mb-4 text-slate-800"><i class="fa-solid fa-chart-column text-blue-600 ml-2"></i> التحليل المالي للمشاريع</h3>
-            <div class="relative h-64">
-              <canvas id="financialChart"></canvas>
-            </div>
-          </div>
-          <div class="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
-            <h3 class="font-bold text-lg text-slate-800 border-b pb-2"><i class="fa-solid fa-bell text-amber-500 ml-2"></i> التنبيهات والانتهاءات</h3>
-            <div>
-              <h4 class="text-xs font-bold text-slate-400 mb-2">وثائق المؤسسة القريبة الانتهاء</h4>
-              <ul id="alertDocsList" class="space-y-2 text-xs"></ul>
-            </div>
-            <div>
-              <h4 class="text-xs font-bold text-slate-400 mb-2">الإقامات القريبة الانتهاء</h4>
-              <ul id="alertIqamaList" class="space-y-2 text-xs"></ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 2. إدارة المشاريع -->
-      <section id="projectsView" class="hidden">
-        <div class="flex justify-between items-center mb-6">
-          <div>
-            <h2 class="text-2xl font-black">إدارة المشاريع</h2>
-            <p class="text-xs text-slate-500 font-bold mt-1">عرض جميع المشاريع، التعديل، الحذف، أو الطباعة</p>
-          </div>
-          <button onclick="openNewProjectModal()" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 flex items-center gap-2">
-            <i class="fa-solid fa-plus"></i> إضافة مشروع جديد
-          </button>
-        </div>
-
-        <div id="projectsCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-      </section>
-
-      <!-- 3. قائمة المصروفات -->
-      <section id="expensesView" class="hidden">
-        <div class="flex justify-between items-center mb-6">
-          <div>
-            <h2 class="text-2xl font-black">قائمة المصروفات</h2>
-            <p class="text-xs text-slate-500 font-bold mt-1">إدارة المصروفات مع خيارات تعديل، حذف، واستعراض الملاحظات والفواتير</p>
-          </div>
-          <button onclick="openNewExpenseModal()" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-blue-700 flex items-center gap-2">
-            <i class="fa-solid fa-plus"></i> إدخال مصروف جديد
-          </button>
-        </div>
-        <div class="bg-white rounded-2xl shadow-sm border overflow-x-auto">
-          <table class="w-full text-right text-sm">
-            <thead class="bg-slate-50 border-b font-bold text-slate-600">
-              <tr>
-                <th class="p-4">كود المشروع</th>
-                <th class="p-4">بند المصروف</th>
-                <th class="p-4">المبلغ</th>
-                <th class="p-4">التاريخ</th>
-                <th class="p-4">الملاحظات</th>
-                <th class="p-4 text-center">الفاتورة</th>
-                <th class="p-4 text-center">الإجراءات</th>
-              </tr>
-            </thead>
-            <tbody id="expensesTableBody" class="divide-y"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- 4. إدارة الموظفين والرواتب -->
-      <section id="employeesView" class="hidden">
-        <div class="flex justify-between items-center mb-6">
-          <div>
-            <h2 class="text-2xl font-black">إدارة الموظفين والرواتب</h2>
-            <p class="text-xs text-slate-500 font-bold mt-1">متابعة العمالة، الإقامات، وتوليد كشوفات وقسائم الرواتب</p>
-          </div>
-          <div class="flex gap-2">
-            <button onclick="openNewEmployeeModal()" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-blue-700 flex items-center gap-2 text-sm">
-              <i class="fa-solid fa-user-plus"></i> إضافة موظف
-            </button>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow-sm border overflow-x-auto">
-          <table class="w-full text-right text-sm">
-            <thead class="bg-slate-50 border-b font-bold text-slate-600">
-              <tr>
-                <th class="p-4">رقم الموظف</th>
-                <th class="p-4">اسم الموظف</th>
-                <th class="p-4">رقم الهوية / الإقامة</th>
-                <th class="p-4">المهنة</th>
-                <th class="p-4">الراتب الأساسي</th>
-                <th class="p-4">انتهاء الإقامة</th>
-                <th class="p-4 text-center">الإجراءات</th>
-              </tr>
-            </thead>
-            <tbody id="employeesTableBody" class="divide-y"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- 5. العقود والخطابات -->
-      <section id="lettersView" class="hidden">
-        <div class="flex justify-between items-center mb-6">
-          <div>
-            <h2 class="text-2xl font-black">إدارة العقود والخطابات</h2>
-            <p class="text-xs text-slate-500 font-bold mt-1">حفظ المعاملات والمستندات الرسمية مع إمكانية المعاينة والطباعة والتعديل والحذف</p>
-          </div>
-          <button onclick="openNewLetterModal()" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-blue-700 flex items-center gap-2">
-            <i class="fa-solid fa-plus"></i> إضافة خطاب / عقد
-          </button>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow-sm border overflow-x-auto">
-          <table class="w-full text-right text-sm">
-            <thead class="bg-slate-50 border-b font-bold text-slate-600">
-              <tr>
-                <th class="p-4">اسم الخطاب / العقد</th>
-                <th class="p-4">الجهة</th>
-                <th class="p-4">التاريخ</th>
-                <th class="p-4 text-center">الإجراءات</th>
-              </tr>
-            </thead>
-            <tbody id="lettersTableBody" class="divide-y"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- 6. وثائق المؤسسة -->
-      <section id="orgDocsView" class="hidden">
-        <div class="flex justify-between items-center mb-6">
-          <div>
-            <h2 class="text-2xl font-black">وثائق المؤسسة الرسمية</h2>
-            <p class="text-xs text-slate-500 font-bold mt-1">إدارة الوثائق والسجلات وتنبيهات مواعيد الانتهاء</p>
-          </div>
-          <div class="flex gap-2">
-            <button onclick="printAllOrgDocs()" class="bg-slate-800 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-slate-900 flex items-center gap-2 shadow-md">
-              <i class="fa-solid fa-print"></i> طباعة كافة المستندات (PDF)
-            </button>
-            <button onclick="openNewOrgDocModal()" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-blue-700 flex items-center gap-2">
-              <i class="fa-solid fa-plus"></i> إضافة وثيقة جديدة
-            </button>
-          </div>
-        </div>
-
-        <div id="orgDocsCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-      </section>
-
-      <!-- 7. صفحة إدارة المستخدمين -->
-      <section id="usersView" class="hidden">
-        <div class="flex justify-between items-center mb-6">
-          <div>
-            <h2 class="text-2xl font-black">إدارة المستخدمين</h2>
-            <p class="text-xs text-slate-500 font-bold mt-1">إدارة مستخدمي النظام وصلاحيات الوصول</p>
-          </div>
-          <button onclick="openNewUserModal()" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-blue-700 flex items-center gap-2">
-            <i class="fa-solid fa-user-plus"></i> إضافة مستخدم جديد
-          </button>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow-sm border overflow-x-auto">
-          <table class="w-full text-right text-sm">
-            <thead class="bg-slate-50 border-b font-bold text-slate-600">
-              <tr>
-                <th class="p-4">الاسم</th>
-                <th class="p-4">البريد الإلكتروني</th>
-                <th class="p-4">الدور / الصلاحية</th>
-                <th class="p-4 text-center">الإجراءات</th>
-              </tr>
-            </thead>
-            <tbody id="usersTableBody" class="divide-y"></tbody>
-          </table>
-        </div>
-      </section>
-
-    </main>
-  </div>
-
-  <!-- ==================== المودالات ==================== -->
-
-  <!-- مودال مشروع -->
-  <div id="projectModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-      <h3 id="projectModalTitle" class="font-bold text-lg mb-4 text-slate-800 border-b pb-2">إضافة مشروع جديد</h3>
-      <form onsubmit="saveProjectForm(event)" class="space-y-3">
-        <input type="hidden" id="p_id">
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">كود المشروع</label>
-            <input type="text" id="p_code" required class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">حالة المشروع</label>
-            <select id="p_status" required class="w-full border p-2.5 rounded-lg text-sm bg-white">
-              <option value="قيد المراجعة">قيد المراجعة</option>
-              <option value="تحت التنفيذ">تحت التنفيذ</option>
-              <option value="تم الإنجاز">تم الإنجاز</option>
-            </select>
-          </div>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">اسم المشروع</label>
-          <input type="text" id="p_name" required class="w-full border p-2.5 rounded-lg text-sm">
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">العميل</label>
-            <input type="text" id="p_client" required class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">موقع المشروع</label>
-            <input type="text" id="p_location" class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">مدير المشروع</label>
-          <input type="text" id="p_manager" class="w-full border p-2.5 rounded-lg text-sm">
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">القيمة الإجمالية للمشروع</label>
-            <input type="number" id="p_val" required class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">المستخلص المستلم (المحصل)</label>
-            <input type="number" id="p_collected" value="0" class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">تاريخ بداية المشروع</label>
-            <input type="date" id="p_start" class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">تاريخ نهاية المشروع</label>
-            <input type="date" id="p_end" class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-        </div>
-        <div class="flex gap-2 pt-3">
-          <button type="submit" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-lg w-full hover:bg-blue-700">حفظ التغييرات</button>
-          <button type="button" onclick="closeModal('projectModal')" class="bg-slate-200 px-4 py-2.5 rounded-lg w-full font-bold">إلغاء</button>
-        </div>
-      </form>
     </div>
-  </div>
+  </header>
 
-  <!-- مودال تفاصيل المشروع -->
-  <div id="projectDetailsModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b pb-3 mb-4">
-        <div>
-          <span id="pd_code" class="text-xs font-bold text-blue-600 block"></span>
-          <h3 id="pd_title" class="font-black text-xl text-slate-800"></h3>
+  <!-- القائمة الرئيسية للتنقل -->
+  <nav class="bg-white border-b sticky top-[61px] z-40 shadow-sm">
+    <div class="container mx-auto px-4 flex overflow-x-auto gap-2 py-2 text-xs font-bold">
+      <button onclick="switchTab('dashboardView')" id="tab-dashboardView" class="tab-btn tab-active px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-chart-pie"></i> لوحة التحكم
+      </button>
+      <button onclick="switchTab('projectsView')" id="tab-projectsView" class="tab-btn text-slate-600 hover:bg-slate-100 px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-city"></i> المشاريع
+      </button>
+      <button onclick="switchTab('expensesView')" id="tab-expensesView" class="tab-btn text-slate-600 hover:bg-slate-100 px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-receipt"></i> المصروفات والتصدير
+      </button>
+      <button onclick="switchTab('lettersView')" id="tab-lettersView" class="tab-btn text-slate-600 hover:bg-slate-100 px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-file-signature"></i> العقود والخطابات
+      </button>
+      <button onclick="switchTab('orgDocsView')" id="tab-orgDocsView" class="tab-btn text-slate-600 hover:bg-slate-100 px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-folder-open"></i> وثائق المؤسسة
+      </button>
+    </div>
+  </nav>
+
+  <!-- محتوى الصفحات -->
+  <main class="container mx-auto px-4 py-6">
+
+    <!-- 1. لوحة التحكم -->
+    <section id="dashboardView" class="space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-2xl border shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold text-slate-400 mb-1">إجمالي المشاريع</p>
+            <h3 id="dashTotalProjects" class="text-2xl font-black text-slate-800">0</h3>
+          </div>
+          <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-xl"><i class="fa-solid fa-building"></i></div>
         </div>
-        <button onclick="closeModal('projectDetailsModal')" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div id="pd_content" class="space-y-4"></div>
-      <div class="mt-6 pt-4 border-t flex flex-wrap justify-between items-center gap-2">
-        <div class="flex gap-2">
-          <button id="pd_btn_edit" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2">
-            <i class="fa-solid fa-pen-to-square"></i> تعديل البيانات
-          </button>
-          <button id="pd_btn_delete" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2">
-            <i class="fa-solid fa-trash"></i> حذف المشروع
-          </button>
+        <div class="bg-white p-5 rounded-2xl border shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold text-slate-400 mb-1">إجمالي المصروفات</p>
+            <h3 id="dashTotalExpenses" class="text-2xl font-black text-rose-600">0 ر.س</h3>
+          </div>
+          <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center text-xl"><i class="fa-solid fa-wallet"></i></div>
         </div>
-        <div class="flex gap-2">
-          <button id="pd_btn_print" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2">
-            <i class="fa-solid fa-print"></i> طباعة التقرير
-          </button>
+        <div class="bg-white p-5 rounded-2xl border shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold text-slate-400 mb-1">وثائق المؤسسة</p>
+            <h3 id="dashTotalDocs" class="text-2xl font-black text-emerald-600">0</h3>
+          </div>
+          <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-xl"><i class="fa-solid fa-file-circle-check"></i></div>
         </div>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <!-- مودال المصروفات الشامل -->
-  <div id="expenseModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6">
-      <h3 id="expenseModalTitle" class="font-bold text-lg mb-4 text-slate-800 border-b pb-2">إدخال مصروف جديد</h3>
-      <form onsubmit="saveExpense(event)" class="space-y-3">
-        <input type="hidden" id="e_id">
-        <input type="hidden" id="e_existing_file">
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">المشروع</label>
-          <select id="e_projectCode" required class="w-full border p-2.5 rounded-lg text-sm bg-white"></select>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">بند المصروف</label>
-            <input type="text" id="e_title" placeholder="مثال: مواد بناء / إيجار معدات" required class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">المبلغ (ر.س)</label>
-            <input type="number" id="e_amount" placeholder="0.00" step="any" required class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">تاريخ المصروف</label>
-          <input type="date" id="e_date" required class="w-full border p-2.5 rounded-lg text-sm">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">ملاحظات إضافية</label>
-          <textarea id="e_notes" rows="2" placeholder="أدخل أي ملاحظات حول عملية الصرف..." class="w-full border p-2.5 rounded-lg text-sm resize-none"></textarea>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">إرفاق الفاتورة (صورة أو PDF)</label>
-          <input type="file" id="e_file" accept="image/*,application/pdf" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-          <p id="existingFileNotice" class="text-xs text-emerald-600 font-bold mt-1 hidden"></p>
-        </div>
-        <div class="flex gap-2 pt-3">
-          <button type="submit" id="e_btn_submit" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-lg w-full hover:bg-blue-700">حفظ البيانات</button>
-          <button type="button" onclick="closeModal('expenseModal')" class="bg-slate-200 px-4 py-2.5 rounded-lg w-full font-bold">إلغاء</button>
-        </div>
-      </form>
-    </div>
-  </div>
+    <!-- 2. قائمة المشاريع -->
+    <section id="projectsView" class="hidden">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-black">إدارة المشاريع</h2>
+        <button onclick="openModal('projectModal')" class="bg-blue-600 text-white font-bold px-4 py-2 rounded-xl text-sm hover:bg-blue-700">
+          <i class="fa-solid fa-plus"></i> إضافة مشروع
+        </button>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+        <table class="w-full text-right text-sm">
+          <thead class="bg-slate-50 border-b font-bold text-slate-600">
+            <tr>
+              <th class="p-4">كود المشروع</th>
+              <th class="p-4">اسم المشروع</th>
+              <th class="p-4">العميل</th>
+              <th class="p-4">الميزانية</th>
+              <th class="p-4 text-center">الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="projectsTableBody" class="divide-y"></tbody>
+        </table>
+      </div>
+    </section>
 
-  <!-- مودال إضافة / تعديل موظف -->
-  <div id="employeeModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-      <h3 id="employeeModalTitle" class="font-bold text-lg mb-4 text-slate-800 border-b pb-2">إضافة موظف جديد</h3>
-      <form onsubmit="saveEmployee(event)" class="space-y-3">
-        <input type="hidden" id="emp_id">
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">رقم الموظف</label>
-            <input type="text" id="emp_code" required class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">اسم الموظف</label>
-            <input type="text" id="emp_name" required class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">رقم الهوية / الإقامة</label>
-            <input type="text" id="emp_iqama" required class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">المهنة</label>
-            <input type="text" id="emp_job" required class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">الراتب الأساسي (ر.س)</label>
-            <input type="number" id="emp_salary" required class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">تاريخ انتهاء الإقامة</label>
-            <input type="date" id="emp_iqama_date" required class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">تاريخ الميلاد</label>
-            <input type="date" id="emp_dob" class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">فصيلة الدم</label>
-            <select id="emp_blood" class="w-full border p-2.5 rounded-lg text-sm bg-white">
-              <option value="">غير محدد</option>
-              <option value="A+">A+</option>
-              <option value="A-">A-</option>
-              <option value="B+">B+</option>
-              <option value="B-">B-</option>
-              <option value="O+">O+</option>
-              <option value="O-">O-</option>
-              <option value="AB+">AB+</option>
-              <option value="AB-">AB-</option>
-            </select>
-          </div>
-        </div>
-        <div class="flex gap-2 pt-3">
-          <button type="submit" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-lg w-full hover:bg-blue-700">حفظ البيانات</button>
-          <button type="button" onclick="closeModal('employeeModal')" class="bg-slate-200 px-4 py-2.5 rounded-lg w-full font-bold">إلغاء</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- مودال قسيمة الراتب -->
-  <div id="salarySlipModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-md w-full p-6">
-      <h3 class="font-bold text-lg mb-4 text-slate-800 border-b pb-2"><i class="fa-solid fa-file-invoice-dollar text-blue-600 ml-2"></i> إصدار مسير / قسيمة راتب</h3>
-      <form onsubmit="generateSalarySlip(event)" class="space-y-3">
-        <input type="hidden" id="slip_emp_code">
+    <!-- 3. المصروفات والتصدير -->
+    <section id="expensesView" class="hidden">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">اسم الموظف</label>
-          <input type="text" id="slip_emp_name" readonly class="w-full border p-2.5 rounded-lg text-sm bg-slate-100 font-bold">
+          <h2 class="text-2xl font-black">قائمة المصروفات</h2>
+          <p class="text-xs text-slate-500 font-bold mt-1">تصفية المصروفات بالفترة، استخراج التقارير وتصديرها إلى إكسيل</p>
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">عن شهر / سنة</label>
-            <input type="month" id="slip_month" required class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">الراتب الأساسي</label>
-            <input type="number" id="slip_basic" readonly class="w-full border p-2.5 rounded-lg text-sm bg-slate-100 font-bold">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">إضافي / مكافآت (ر.س)</label>
-            <input type="number" id="slip_bonus" value="0" oninput="calculateNetSalary()" class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">حسميات / خصم (ر.س)</label>
-            <input type="number" id="slip_deduction" value="0" oninput="calculateNetSalary()" class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-        </div>
-        <div class="bg-slate-900 text-white p-3 rounded-xl flex justify-between items-center my-2">
-          <span class="text-xs font-bold">صافي الراتب المستحق:</span>
-          <span id="slip_net" class="text-base font-black text-emerald-400">0 ر.س</span>
-        </div>
-        <div class="flex gap-2 pt-2">
-          <button type="submit" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-lg w-full hover:bg-blue-700 flex items-center justify-center gap-2">
-            <i class="fa-solid fa-print"></i> طباعة القسيمة
-          </button>
-          <button type="button" onclick="closeModal('salarySlipModal')" class="bg-slate-200 px-4 py-2.5 rounded-lg w-full font-bold">إلغاء</button>
-        </div>
-      </form>
-    </div>
-  </div>
+        <button onclick="openModal('expenseModal')" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-blue-700 flex items-center gap-2">
+          <i class="fa-solid fa-plus"></i> إدخال مصروف جديد
+        </button>
+      </div>
 
-  <!-- مودال العقود والخطابات -->
-  <div id="letterModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6">
-      <h3 id="letterModalTitle" class="font-bold text-lg mb-4 text-slate-800 border-b pb-2">إضافة خطاب / عقد</h3>
-      <form onsubmit="saveLetter(event)" class="space-y-3">
+      <!-- شريط التصفية بالتاريخ -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">من تاريخ</label>
+            <input type="date" id="filterStartDate" class="w-full border p-2 rounded-lg text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">إلى تاريخ</label>
+            <input type="date" id="filterEndDate" class="w-full border p-2 rounded-lg text-sm">
+          </div>
+          <div class="flex gap-2">
+            <button onclick="filterExpensesByDate()" class="bg-slate-800 text-white font-bold px-4 py-2 rounded-lg text-sm hover:bg-slate-900 flex-1">
+              <i class="fa-solid fa-filter"></i> عرض الفترة
+            </button>
+            <button onclick="resetExpenseFilter()" class="bg-slate-200 text-slate-700 font-bold px-3 py-2 rounded-lg text-sm hover:bg-slate-300">
+              إعادة ضبط
+            </button>
+          </div>
+          <div>
+            <button onclick="exportExpensesToExcel()" class="bg-emerald-600 text-white font-bold px-4 py-2 rounded-lg text-sm hover:bg-emerald-700 w-full flex items-center justify-center gap-2 shadow-md shadow-emerald-100">
+              <i class="fa-solid fa-file-excel"></i> تصدير إلى شيت Excel
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+        <table class="w-full text-right text-sm">
+          <thead class="bg-slate-50 border-b font-bold text-slate-600">
+            <tr>
+              <th class="p-4">كود المشروع</th>
+              <th class="p-4">بند المصروف</th>
+              <th class="p-4">المبلغ</th>
+              <th class="p-4">التاريخ</th>
+              <th class="p-4">الملاحظات</th>
+              <th class="p-4 text-center">الفاتورة</th>
+              <th class="p-4 text-center">الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="expensesTableBody" class="divide-y"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 4. العقود والخطابات -->
+    <section id="lettersView" class="hidden">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 class="text-xl font-black">العقود والخطابات الرسمية</h2>
+          <p class="text-xs text-slate-500">أرشيف الخطابات المرفقة والمستندات الرسمية</p>
+        </div>
+        <button onclick="openLetterModal()" class="bg-blue-600 text-white font-bold px-4 py-2 rounded-xl text-sm hover:bg-blue-700">
+          <i class="fa-solid fa-plus"></i> إضافة خطاب/عقد
+        </button>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+        <table class="w-full text-right text-sm">
+          <thead class="bg-slate-50 border-b font-bold text-slate-600">
+            <tr>
+              <th class="p-4">عنوان الخطاب / العقد</th>
+              <th class="p-4">الجهة / الموجه إليه</th>
+              <th class="p-4">التاريخ</th>
+              <th class="p-4 text-center">المعاينات</th>
+              <th class="p-4 text-center">الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="lettersTableBody" class="divide-y"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 5. وثائق المؤسسة -->
+    <section id="orgDocsView" class="hidden">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 class="text-xl font-black">وثائق السجل والترخيص</h2>
+          <p class="text-xs text-slate-500">متابعة تراخيص ووثائق المؤسسة ومواعيد انتهائها</p>
+        </div>
+        <button onclick="openOrgDocModal()" class="bg-blue-600 text-white font-bold px-4 py-2 rounded-xl text-sm hover:bg-blue-700">
+          <i class="fa-solid fa-plus"></i> إضافة وثيقة
+        </button>
+      </div>
+
+      <div id="orgDocsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+    </section>
+
+  </main>
+
+  <!-- المودالات المساعدة Modal Windows -->
+
+  <!-- مودال إضافة/تعديل عقد أو خطاب -->
+  <div id="letterModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-2xl p-6 shadow-xl space-y-4">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 id="letterModalTitle" class="font-black text-lg">إضافة عقد / خطاب جديد</h3>
+        <button onclick="closeModal('letterModal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+      <form onsubmit="saveLetter(event)" class="space-y-4">
         <input type="hidden" id="l_id">
         <input type="hidden" id="l_existing_file">
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">اسم الخطاب أو العقد</label>
-          <input type="text" id="l_title" required class="w-full border p-2.5 rounded-lg text-sm">
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">الجهة</label>
-            <input type="text" id="l_entity" required class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">تاريخ الخطاب أو العقد</label>
-            <input type="date" id="l_date" required class="w-full border p-2.5 rounded-lg text-sm">
-          </div>
+          <label class="block text-xs font-bold mb-1">عنوان العقد / الخطاب</label>
+          <input type="text" id="l_title" required class="w-full border p-2.5 rounded-xl text-sm">
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">إرفاق الملف (صورة أو PDF)</label>
-          <input type="file" id="l_file" accept="image/*,application/pdf" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-          <p id="l_existingFileNotice" class="text-xs text-emerald-600 font-bold mt-1 hidden"></p>
+          <label class="block text-xs font-bold mb-1">الجهة / الموجه إليه</label>
+          <input type="text" id="l_recipient" required class="w-full border p-2.5 rounded-xl text-sm">
         </div>
-        <div class="flex gap-2 pt-3">
-          <button type="submit" id="l_btn_submit" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-lg w-full hover:bg-blue-700">حفظ البيانات</button>
-          <button type="button" onclick="closeModal('letterModal')" class="bg-slate-200 px-4 py-2.5 rounded-lg w-full font-bold">إلغاء</button>
+        <div>
+          <label class="block text-xs font-bold mb-1">التاريخ</label>
+          <input type="date" id="l_date" required class="w-full border p-2.5 rounded-xl text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-bold mb-1">إرفاق المستند (PDF أو صورة)</label>
+          <input type="file" id="l_file" accept="image/*,application/pdf" class="w-full border p-2 rounded-xl text-sm">
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="submit" id="l_btn_submit" class="bg-blue-600 text-white font-bold w-full py-2.5 rounded-xl hover:bg-blue-700 text-sm">حفظ البيانات</button>
+          <button type="button" onclick="closeModal('letterModal')" class="bg-slate-100 text-slate-600 font-bold w-full py-2.5 rounded-xl hover:bg-slate-200 text-sm">إلغاء</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- مودال وثائق المؤسسة -->
-  <div id="orgDocModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6">
-      <h3 id="orgDocModalTitle" class="font-bold text-lg mb-4 text-slate-800 border-b pb-2">إضافة وثيقة مؤسسة</h3>
-      <form onsubmit="saveOrgDoc(event)" class="space-y-3">
+  <!-- مودال إضافة/تعديل وثيقة مؤسسة -->
+  <div id="orgDocModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-2xl p-6 shadow-xl space-y-4">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 id="orgDocModalTitle" class="font-black text-lg">إضافة وثيقة رسمية</h3>
+        <button onclick="closeModal('orgDocModal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+      <form onsubmit="saveOrgDoc(event)" class="space-y-4">
         <input type="hidden" id="od_id">
         <input type="hidden" id="od_existing_file">
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">اسم الوثيقة</label>
-          <input type="text" id="od_title" required placeholder="مثال: السجل التجاري / رخصة البلدية" class="w-full border p-2.5 rounded-lg text-sm">
+          <label class="block text-xs font-bold mb-1">اسم الوثيقة (مثل: السجل التجاري)</label>
+          <input type="text" id="od_title" required class="w-full border p-2.5 rounded-xl text-sm">
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">تاريخ انتهاء الوثيقة</label>
-          <input type="date" id="od_exp_date" required class="w-full border p-2.5 rounded-lg text-sm">
+          <label class="block text-xs font-bold mb-1">تاريخ انتهاء الوثيقة</label>
+          <input type="date" id="od_exp_date" required class="w-full border p-2.5 rounded-xl text-sm">
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">إرفاق الوثيقة (صورة أو PDF)</label>
-          <input type="file" id="od_file" accept="image/*,application/pdf" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-          <p id="od_existingFileNotice" class="text-xs text-emerald-600 font-bold mt-1 hidden"></p>
+          <label class="block text-xs font-bold mb-1">إرفاق ملف الوثيقة (PDF / صورة)</label>
+          <input type="file" id="od_file" accept="image/*,application/pdf" class="w-full border p-2 rounded-xl text-sm">
         </div>
-        <div class="flex gap-2 pt-3">
-          <button type="submit" id="od_btn_submit" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-lg w-full hover:bg-blue-700">حفظ البيانات</button>
-          <button type="button" onclick="closeModal('orgDocModal')" class="bg-slate-200 px-4 py-2.5 rounded-lg w-full font-bold">إلغاء</button>
+        <div class="flex gap-2 pt-2">
+          <button type="submit" id="od_btn_submit" class="bg-blue-600 text-white font-bold w-full py-2.5 rounded-xl hover:bg-blue-700 text-sm">حفظ الوثيقة</button>
+          <button type="button" onclick="closeModal('orgDocModal')" class="bg-slate-100 text-slate-600 font-bold w-full py-2.5 rounded-xl hover:bg-slate-200 text-sm">إلغاء</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- مودال المستخدمين -->
-  <div id="userModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6">
-      <h3 id="userModalTitle" class="font-bold text-lg mb-4 text-slate-800 border-b pb-2">إضافة مستخدم جديد</h3>
-      <form onsubmit="saveUser(event)" class="space-y-3">
-        <input type="hidden" id="u_id">
+  <!-- مودال إضافة مصروف -->
+  <div id="expenseModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-2xl p-6 shadow-xl space-y-4">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-black text-lg">إدخال مصروف جديد</h3>
+        <button onclick="closeModal('expenseModal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+      <form onsubmit="saveExpense(event)" class="space-y-4">
+        <input type="hidden" id="e_id">
+        <input type="hidden" id="e_existing_file">
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">الاسم الكامل</label>
-          <input type="text" id="u_name" required class="w-full border p-2.5 rounded-lg text-sm">
+          <label class="block text-xs font-bold mb-1">المشروع التابع له</label>
+          <select id="e_projectCode" required class="w-full border p-2.5 rounded-xl text-sm bg-white"></select>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">البريد الإلكتروني</label>
-          <input type="email" id="u_email" required class="w-full border p-2.5 rounded-lg text-sm">
+          <label class="block text-xs font-bold mb-1">بند المصروف</label>
+          <input type="text" id="e_title" required class="w-full border p-2.5 rounded-xl text-sm" placeholder="مواد بناء، أجور، نقل...">
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">كلمة المرور</label>
-          <input type="text" id="u_password" required class="w-full border p-2.5 rounded-lg text-sm">
+          <label class="block text-xs font-bold mb-1">المبلغ (ر.س)</label>
+          <input type="number" step="0.01" id="e_amount" required class="w-full border p-2.5 rounded-xl text-sm">
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">الدور / الصلاحية</label>
-          <select id="u_role" required class="w-full border p-2.5 rounded-lg text-sm bg-white">
-            <option value="مدير النظام">مدير النظام</option>
-            <option value="محاسب">محاسب</option>
-            <option value="مدير مشروع">مدير مشروع</option>
-          </select>
+          <label class="block text-xs font-bold mb-1">التاريخ</label>
+          <input type="date" id="e_date" required class="w-full border p-2.5 rounded-xl text-sm">
         </div>
-        <div class="flex gap-2 pt-3">
-          <button type="submit" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-lg w-full hover:bg-blue-700">حفظ المستخدم</button>
-          <button type="button" onclick="closeModal('userModal')" class="bg-slate-200 px-4 py-2.5 rounded-lg w-full font-bold">إلغاء</button>
+        <div>
+          <label class="block text-xs font-bold mb-1">ملاحظات</label>
+          <textarea id="e_notes" class="w-full border p-2.5 rounded-xl text-sm" rows="2"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-bold mb-1">صورة الفاتورة / المستند</label>
+          <input type="file" id="e_file" accept="image/*,application/pdf" class="w-full border p-2 rounded-xl text-sm">
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="submit" id="e_btn_submit" class="bg-blue-600 text-white font-bold w-full py-2.5 rounded-xl hover:bg-blue-700 text-sm">حفظ المصروف</button>
+          <button type="button" onclick="closeModal('expenseModal')" class="bg-slate-100 text-slate-600 font-bold w-full py-2.5 rounded-xl hover:bg-slate-200 text-sm">إلغاء</button>
         </div>
       </form>
     </div>
   </div>
 
+  <!-- السكريبت المباشر للتحكم بالنظام -->
   <script>
-    let currentUser = null;
+    // المتغيرات العامة للبيانات
     let allProjects = [];
     let allExpenses = [];
-    let allEmployees = [];
     let allLetters = [];
     let allOrgDocs = [];
-    let allUsers = [];
-    let chartInstance = null;
+    let filteredExpensesList = [];
 
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-xVuOb09mAWQanMzza9XesdWlK8eJgT8ZuHxValLm-qqHnfhhVA/exec";
+    // عند تحميل الصفحة
+    window.onload = function() {
+      fetchAllData();
+    };
 
-    // محاكاة أو ربط بين البيئتين (Google Apps Script و GitHub)
-    async function callBackend(functionName, ...args) {
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        return new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(reject)[functionName](...args);
-        });
-      } else {
-        let url = SCRIPT_URL;
-        let options = {};
-
-        if (functionName === 'getDashboardData') {
-          url += '?action=getDashboard';
-          options = { method: 'GET' };
-        } else if (functionName === 'getAllAppData') {
-          url += '?action=getAllData';
-          options = { method: 'GET' };
-        } else if (functionName === 'getData') {
-          url += '?action=getData&sheetName=' + encodeURIComponent(args[0]);
-          options = { method: 'GET' };
-        } else if (functionName === 'checkLogin') {
-          url += '?action=checkLogin&email=' + encodeURIComponent(args[0]) + '&password=' + encodeURIComponent(args[1]);
-          options = { method: 'GET' };
-        } else if (functionName === 'saveRecord') {
-          options = {
-            method: 'POST',
-            body: JSON.stringify({ action: 'saveRecord', sheetName: args[0], record: args[1] })
-          };
-        } else if (functionName === 'deleteRecord') {
-          options = {
-            method: 'POST',
-            body: JSON.stringify({ action: 'deleteRecord', sheetName: args[0], id: args[1] })
-          };
-        } else if (functionName === 'uploadFileToDrive') {
-          options = {
-            method: 'POST',
-            body: JSON.stringify({ action: 'uploadFile', fileData: args[0] })
-          };
-        }
-
-        const res = await fetch(url, options);
-        return await res.json();
-      }
-    }
-
-    // تحميل كافة البيانات دفعة واحدة لسرعة التصفح
-    async function fetchAllData() {
-      try {
-        const data = await callBackend('getAllAppData');
-        if (data) {
-          allProjects = data['المشاريع'] || [];
-          allExpenses = data['المصروفات'] || [];
-          allEmployees = data['الموظفين'] || [];
-          allLetters = data['العقود والخطابات'] || [];
-          allOrgDocs = data['وثائق الشركة'] || [];
-          allUsers = data['المستخدمين'] || [];
-        }
-      } catch (err) {
-        console.error("خطأ في جلب كافة البيانات:", err);
-      }
-    }
-
-    window.addEventListener('DOMContentLoaded', async () => {
-      const savedUser = localStorage.getItem('app_user');
-      const savedTab = localStorage.getItem('app_tab') || 'dashboard';
-
-      if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        document.getElementById('loginScreen').classList.add('hidden');
-        document.getElementById('appScreen').classList.remove('hidden');
-        document.getElementById('userRoleBadge').innerText = currentUser.role || 'مدير النظام';
-        
-        await fetchAllData();
-        switchTab(savedTab);
-      }
-    });
-
-    // 1. تسجيل الدخول
-    async function handleLoginProcess(event) {
-      if(event) event.preventDefault();
-
-      const emailInput = document.getElementById('loginEmail')?.value.trim();
-      const passwordInput = document.getElementById('loginPassword')?.value.trim();
-      const loginBtn = document.getElementById('login-btn');
-
-      if (!emailInput || !passwordInput) {
-        alert("يرجى إدخال البريد الإلكتروني وكلمة المرور");
-        return;
-      }
-
-      if (loginBtn) {
-        loginBtn.innerText = "جاري التحقق...";
-        loginBtn.disabled = true;
-      }
-
-      try {
-        const res = await callBackend('checkLogin', emailInput, passwordInput);
-        if (loginBtn) {
-          loginBtn.innerText = "تسجيل الدخول";
-          loginBtn.disabled = false;
-        }
-
-        if (res && res.success) {
-          currentUser = res.user || { email: emailInput, role: 'مدير النظام' };
-          localStorage.setItem('app_user', JSON.stringify(currentUser));
-          
-          document.getElementById('loginScreen').classList.add('hidden');
-          document.getElementById('appScreen').classList.remove('hidden');
-          document.getElementById('userRoleBadge').innerText = currentUser.role || 'مدير النظام';
-          
-          await fetchAllData();
-          switchTab('dashboard');
-        } else {
-          alert(res && res.message ? res.message : "بيانات الدخول غير صحيحة.");
-        }
-      } catch(err) {
-        if (loginBtn) {
-          loginBtn.innerText = "تسجيل الدخول";
-          loginBtn.disabled = false;
-        }
-        currentUser = { email: emailInput, role: 'مدير النظام' };
-        localStorage.setItem('app_user', JSON.stringify(currentUser));
-        document.getElementById('loginScreen').classList.add('hidden');
-        document.getElementById('appScreen').classList.remove('hidden');
-        await fetchAllData();
-        switchTab('dashboard');
-      }
-    }
-
-    // 2. تسجيل الخروج
-    function logout() {
-      localStorage.removeItem('app_user');
-      localStorage.removeItem('app_tab');
-      currentUser = null;
-      document.getElementById('appScreen').classList.add('hidden');
-      document.getElementById('loginScreen').classList.remove('hidden');
-    }
-
+    // التنقل بين التبويبات
     function switchTab(tabId) {
-      localStorage.setItem('app_tab', tabId);
-
-      document.querySelectorAll('main > section').forEach(el => el.classList.add('hidden'));
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active'));
+      document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('tab-active');
+        btn.classList.add('text-slate-600');
+      });
       
-      const target = document.getElementById(tabId + 'View');
-      const activeNav = document.getElementById('nav-' + tabId);
-      
-      if (target) target.classList.remove('hidden');
-      if (activeNav) activeNav.classList.add('tab-active');
-
-      if (tabId === 'dashboard') renderDashboard();
-      if (tabId === 'projects') renderProjectCards();
-      if (tabId === 'expenses') renderExpensesTable();
-      if (tabId === 'employees') renderEmployeesTable();
-      if (tabId === 'letters') renderLettersTable();
-      if (tabId === 'orgDocs') renderOrgDocsCards();
-      if (tabId === 'users') renderUsersTable();
+      document.getElementById(tabId).classList.remove('hidden');
+      const activeBtn = document.getElementById('tab-' + tabId);
+      if (activeBtn) {
+        activeBtn.classList.add('tab-active');
+        activeBtn.classList.remove('text-slate-600');
+      }
     }
 
-    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    // فتح وإغلاق النوافذ
+    function openModal(modalId) {
+      document.getElementById(modalId).classList.remove('hidden');
+    }
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.add('hidden');
+    }
 
-    // --- Dashboard & Charts ---
+    // الربط مع Google Apps Script Backend
+    async function callBackend(action, extraParams = {}) {
+      try {
+        const payload = Object.assign({ action: action }, extraParams);
+        const response = await fetch(window.location.href, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+        return await response.json();
+      } catch (err) {
+        console.error("Backend Error:", err);
+        return null;
+      }
+    }
+
+    // تحويل الملفات إلى Base64
+    function convertFileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
+    }
+
+    // جلب كافة البيانات
+    async function fetchAllData() {
+      allProjects = await callBackend('getData', { sheetName: 'المشاريع' }) || [];
+      allExpenses = await callBackend('getData', { sheetName: 'المصروفات' }) || [];
+      allLetters = await callBackend('getData', { sheetName: 'العقود والخطابات' }) || [];
+      allOrgDocs = await callBackend('getData', { sheetName: 'وثائق الشركة' }) || [];
+
+      renderDashboard();
+      renderProjectsTable();
+      renderExpensesTable();
+      renderLettersTable();
+      renderOrgDocsCards();
+    }
+
+    // عرض لوحة التحكم
     function renderDashboard() {
-      let totalContractValue = 0;
-      let totalCollected = 0;
-      let totalExpenses = 0;
-
-      allProjects.forEach(p => {
-        totalContractValue += parseFloat(p['القيمة الاجمالية']) || 0;
-        totalCollected += parseFloat(p['المستخلص المحصل']) || 0;
-      });
-
-      allExpenses.forEach(e => {
-        totalExpenses += parseFloat(e['المبلغ']) || 0;
-      });
-
-      const totalRemaining = totalContractValue - totalCollected;
-
-      document.getElementById('statTotalContract').innerText = totalContractValue.toLocaleString() + ' ر.س';
-      document.getElementById('statCollected').innerText = totalCollected.toLocaleString() + ' ر.س';
-      document.getElementById('statRemaining').innerText = totalRemaining.toLocaleString() + ' ر.س';
-      document.getElementById('statExpenses').innerText = totalExpenses.toLocaleString() + ' ر.س';
-
-      renderChart({ totalContractValue, totalCollected, totalRemaining, totalExpenses });
-
-      const today = new Date();
-      const expiringDocs = allOrgDocs.filter(d => {
-        if (!d['تاريخ الانتهاء']) return false;
-        const exp = new Date(d['تاريخ الانتهاء']);
-        return (exp - today) / (1000 * 60 * 60 * 24) <= 30;
-      });
-
-      const expiringIqamas = allEmployees.filter(emp => {
-        if (!emp['تاريخ انتهاء الإقامة']) return false;
-        const exp = new Date(emp['تاريخ انتهاء الإقامة']);
-        return (exp - today) / (1000 * 60 * 60 * 24) <= 30;
-      });
-
-      const docList = document.getElementById('alertDocsList');
-      docList.innerHTML = (expiringDocs && expiringDocs.length) ? expiringDocs.map(d => `<li class="p-2 bg-amber-50 text-amber-800 rounded-lg font-bold">📄 ${d['اسم الوثيقة']} (${d['تاريخ الانتهاء']})</li>`).join('') : '<p class="text-slate-400">لا توجد وثائق منتهية</p>';
-
-      const iqamaList = document.getElementById('alertIqamaList');
-      iqamaList.innerHTML = (expiringIqamas && expiringIqamas.length) ? expiringIqamas.map(i => `<li class="p-2 bg-rose-50 text-rose-800 rounded-lg font-bold">👤 ${i['اسم الموظف']} (${i['تاريخ انتهاء الإقامة']})</li>`).join('') : '<p class="text-slate-400">جميع الإقامات سارية</p>';
+      document.getElementById('dashTotalProjects').innerText = allProjects.length;
+      const totalExp = allExpenses.reduce((sum, item) => sum + (parseFloat(item['المبلغ']) || 0), 0);
+      document.getElementById('dashTotalExpenses').innerText = totalExp.toLocaleString() + ' ر.س';
+      document.getElementById('dashTotalDocs').innerText = allOrgDocs.length;
     }
 
-    function renderChart(stats) {
-      const ctx = document.getElementById('financialChart').getContext('2d');
-      if (chartInstance) chartInstance.destroy();
+    // 1. إدارة العقود والخطابات المكتملة
+    function openLetterModal() {
+      document.getElementById('l_id').value = '';
+      document.getElementById('l_title').value = '';
+      document.getElementById('l_recipient').value = '';
+      document.getElementById('l_date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('l_existing_file').value = '';
+      document.getElementById('l_file').value = '';
+      document.getElementById('letterModalTitle').innerText = 'إضافة عقد / خطاب جديد';
+      openModal('letterModal');
+    }
 
-      chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: ['إجمالي العقود', 'المحتسب من المستخلصات', 'المتبقي غير المحصل', 'المصروفات الشاملة'],
-          datasets: [{
-            label: 'المبلغ بالريال السعودي',
-            data: [stats.totalContractValue, stats.totalCollected, stats.totalRemaining, stats.totalExpenses],
-            backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#f43f5e'],
-            borderRadius: 8
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } }
+    async function saveLetter(e) {
+      e.preventDefault();
+      const submitBtn = document.getElementById('l_btn_submit');
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'جاري الحفظ والرفع...';
+
+      const fileInput = document.getElementById('l_file');
+      let fileUrl = document.getElementById('l_existing_file').value;
+
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const base64Data = await convertFileToBase64(file);
+        
+        const uploadRes = await callBackend('uploadFile', {
+          fileData: {
+            fileName: file.name,
+            mimeType: file.type,
+            data: base64Data
+          }
+        });
+
+        if (uploadRes && uploadRes.success) {
+          fileUrl = uploadRes.url;
+        } else {
+          alert('فشل رفع الملف: ' + (uploadRes ? uploadRes.message : 'خطأ اتصال'));
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'حفظ البيانات';
+          return;
         }
-      });
+      }
+
+      const record = {
+        'ID': document.getElementById('l_id').value,
+        'عنوان الخطاب': document.getElementById('l_title').value.trim(),
+        'الجهة': document.getElementById('l_recipient').value.trim(),
+        'التاريخ': document.getElementById('l_date').value,
+        'رابط المستند': fileUrl
+      };
+
+      await callBackend('saveRecord', { sheetName: 'العقود والخطابات', record: record });
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'حفظ البيانات';
+      closeModal('letterModal');
+      await fetchAllData();
     }
 
-    // --- Projects logic ---
-    function renderProjectCards() {
-      const container = document.getElementById('projectsCardsContainer');
-      container.innerHTML = '';
-
-      if (allProjects.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 font-bold">لا يوجد مشاريع مضافة حالياً. اضغط على زر "إضافة مشروع جديد".</div>`;
+    function renderLettersTable() {
+      const tbody = document.getElementById('lettersTableBody');
+      tbody.innerHTML = '';
+      if (allLetters.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 font-bold">لا يوجد عقود أو خطابات مسجلة</td></tr>`;
         return;
       }
 
-      allProjects.forEach(p => {
-        const pExpenses = allExpenses.filter(e => e['كود المشروع'] === p['كود المشروع']).reduce((sum, e) => sum + (parseFloat(e['المبلغ']) || 0), 0);
-        const pValue = parseFloat(p['القيمة الاجمالية']) || 0;
-        const pCollected = parseFloat(p['المستخلص المحصل']) || 0;
-        const pRemaining = pValue - pCollected;
-        const status = p['حالة المشروع'] || 'تحت التنفيذ';
+      allLetters.forEach(item => {
+        const fileBtn = item['رابط المستند'] 
+          ? `<button onclick="window.open('${item['رابط المستند']}', '_blank')" class="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-bold"><i class="fa-solid fa-eye"></i> معاينة</button>`
+          : `<span class="text-slate-400 text-xs">لا يوجد مرفق</span>`;
 
-        let statusBadge = 'bg-blue-100 text-blue-800';
-        if (status === 'قيد المراجعة') statusBadge = 'bg-amber-100 text-amber-800';
-        if (status === 'تم الإنجاز') statusBadge = 'bg-emerald-100 text-emerald-800';
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 font-semibold">
+            <td class="p-4 font-bold text-slate-800">${item['عنوان الخطاب']}</td>
+            <td class="p-4 text-slate-600">${item['الجهة']}</td>
+            <td class="p-4 text-slate-500">${item['التاريخ']}</td>
+            <td class="p-4 text-center">${fileBtn}</td>
+            <td class="p-4 text-center">
+              <button onclick="deleteLetter('${item['ID']}')" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 inline-flex items-center justify-center">
+                <i class="fa-solid fa-trash text-xs"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
 
-        container.innerHTML += `
-          <div onclick="openProjectDetails('${p['ID']}')" class="bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition cursor-pointer flex flex-col justify-between border-t-4 border-t-blue-600">
+    async function deleteLetter(id) {
+      if (!confirm('هل أنت تأكد من حذف هذا الخطاب؟')) return;
+      await callBackend('deleteRecord', { sheetName: 'العقود والخطابات', id: id });
+      await fetchAllData();
+    }
+
+    // 2. إدارة وثائق المؤسسة المكتملة
+    function openOrgDocModal() {
+      document.getElementById('od_id').value = '';
+      document.getElementById('od_title').value = '';
+      document.getElementById('od_exp_date').value = '';
+      document.getElementById('od_existing_file').value = '';
+      document.getElementById('od_file').value = '';
+      document.getElementById('orgDocModalTitle').innerText = 'إضافة وثيقة جديدة';
+      openModal('orgDocModal');
+    }
+
+    async function saveOrgDoc(e) {
+      e.preventDefault();
+      const submitBtn = document.getElementById('od_btn_submit');
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'جاري الحفظ والرفع...';
+
+      const fileInput = document.getElementById('od_file');
+      let fileUrl = document.getElementById('od_existing_file').value;
+
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const base64Data = await convertFileToBase64(file);
+        
+        const uploadRes = await callBackend('uploadFile', {
+          fileData: {
+            fileName: file.name,
+            mimeType: file.type,
+            data: base64Data
+          }
+        });
+
+        if (uploadRes && uploadRes.success) {
+          fileUrl = uploadRes.url;
+        } else {
+          alert('تعذر رفع الوثيقة: ' + (uploadRes ? uploadRes.message : 'خطأ اتصال'));
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'حفظ الوثيقة';
+          return;
+        }
+      }
+
+      const record = {
+        'ID': document.getElementById('od_id').value,
+        'اسم الوثيقة': document.getElementById('od_title').value.trim(),
+        'تاريخ الانتهاء': document.getElementById('od_exp_date').value,
+        'رابط المستند': fileUrl
+      };
+
+      await callBackend('saveRecord', { sheetName: 'وثائق الشركة', record: record });
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'حفظ الوثيقة';
+      closeModal('orgDocModal');
+      await fetchAllData();
+    }
+
+    function renderOrgDocsCards() {
+      const grid = document.getElementById('orgDocsGrid');
+      grid.innerHTML = '';
+      if (allOrgDocs.length === 0) {
+        grid.innerHTML = `<div class="col-span-3 text-center py-12 text-slate-400 font-bold">لا توجد وثائق رسمية مضافة</div>`;
+        return;
+      }
+
+      allOrgDocs.forEach(doc => {
+        const viewLink = doc['رابط المستند'] 
+          ? `<a href="${doc['رابط المستند']}" target="_blank" class="text-xs text-blue-600 font-bold hover:underline flex items-center gap-1"><i class="fa-solid fa-file-lines"></i> عرض المستند المرفق</a>`
+          : `<span class="text-xs text-slate-400">لا يوجد ملف مرفق</span>`;
+
+        grid.innerHTML += `
+          <div class="bg-white p-5 rounded-2xl border shadow-sm flex flex-col justify-between gap-4">
             <div>
-              <div class="flex justify-between items-start mb-3">
-                <div>
-                  <span class="text-xs font-bold text-slate-400 block">${p['كود المشروع']}</span>
-                  <h3 class="font-black text-lg text-slate-800 mt-0.5">${p['اسم المشروع']}</h3>
-                </div>
-                <span class="text-xs px-2.5 py-1 rounded-full font-bold ${statusBadge}">${status}</span>
+              <div class="flex justify-between items-start mb-2">
+                <h4 class="font-bold text-slate-800">${doc['اسم الوثيقة']}</h4>
+                <button onclick="deleteOrgDoc('${doc['ID']}')" class="text-rose-500 hover:text-rose-700 text-xs"><i class="fa-solid fa-trash"></i></button>
               </div>
-
-              <div class="space-y-1 text-xs text-slate-600 mb-4 font-semibold">
-                <p><i class="fa-solid fa-user text-slate-400 w-4"></i> <strong>العميل:</strong> ${p['العميل'] || '-'}</p>
-                <p><i class="fa-solid fa-location-dot text-slate-400 w-4"></i> <strong>الموقع:</strong> ${p['الموقع'] || '-'}</p>
-                <p><i class="fa-solid fa-user-gear text-slate-400 w-4"></i> <strong>مدير المشروع:</strong> ${p['مدير المشروع'] || '-'}</p>
-              </div>
+              <p class="text-xs font-bold text-slate-500">تاريخ الانتهاء: <span class="text-slate-800">${doc['تاريخ الانتهاء'] || 'غير محدد'}</span></p>
             </div>
-
-            <div class="pt-3 border-t grid grid-cols-2 gap-2 text-xs text-center bg-slate-50 p-2.5 rounded-xl">
-              <div>
-                <span class="text-slate-400 block font-bold">القيمة الإجمالية</span>
-                <span class="font-black text-slate-800">${pValue.toLocaleString()} ر.س</span>
-              </div>
-              <div>
-                <span class="text-slate-400 block font-bold">المستخلص المحصل</span>
-                <span class="font-black text-emerald-600">${pCollected.toLocaleString()} ر.س</span>
-              </div>
-              <div>
-                <span class="text-slate-400 block font-bold">المتبقي من المستخلص</span>
-                <span class="font-black text-amber-600">${pRemaining.toLocaleString()} ر.س</span>
-              </div>
-              <div>
-                <span class="text-slate-400 block font-bold">مصاريف المشروع</span>
-                <span class="font-black text-rose-600">${pExpenses.toLocaleString()} ر.س</span>
-              </div>
+            <div class="border-t pt-3 flex justify-between items-center">
+              ${viewLink}
             </div>
           </div>
         `;
       });
     }
 
-    function openNewProjectModal() {
-      document.getElementById('p_id').value = '';
-      document.getElementById('p_code').value = '';
-      document.getElementById('p_name').value = '';
-      document.getElementById('p_client').value = '';
-      document.getElementById('p_location').value = '';
-      document.getElementById('p_manager').value = '';
-      document.getElementById('p_val').value = '';
-      document.getElementById('p_collected').value = '0';
-      document.getElementById('p_start').value = '';
-      document.getElementById('p_end').value = '';
-      document.getElementById('p_status').value = 'تحت التنفيذ';
-      
-      document.getElementById('projectModalTitle').innerText = 'إضافة مشروع جديد';
-      openModal('projectModal');
-    }
-
-    function openProjectDetails(id) {
-      const p = allProjects.find(item => String(item['ID']) === String(id));
-      if (!p) return;
-
-      const pExpenses = allExpenses.filter(e => e['كود المشروع'] === p['كود المشروع']).reduce((sum, e) => sum + (parseFloat(e['المبلغ']) || 0), 0);
-      const pValue = parseFloat(p['القيمة الاجمالية']) || 0;
-      const pCollected = parseFloat(p['المستخلص المحصل']) || 0;
-      const pRemaining = pValue - pCollected;
-      const netProfit = pValue - pExpenses;
-
-      document.getElementById('pd_code').innerText = p['كود المشروع'];
-      document.getElementById('pd_title').innerText = p['اسم المشروع'];
-
-      document.getElementById('pd_content').innerHTML = `
-        <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border text-xs">
-          <div><span class="text-slate-400 font-bold block">العميل</span><span class="font-extrabold text-slate-800 text-sm">${p['العميل'] || '-'}</span></div>
-          <div><span class="text-slate-400 font-bold block">حالة المشروع</span><span class="font-extrabold text-blue-600 text-sm">${p['حالة المشروع'] || '-'}</span></div>
-          <div><span class="text-slate-400 font-bold block">موقع المشروع</span><span class="font-bold text-slate-700">${p['الموقع'] || '-'}</span></div>
-          <div><span class="text-slate-400 font-bold block">مدير المشروع</span><span class="font-bold text-slate-700">${p['مدير المشروع'] || '-'}</span></div>
-          <div><span class="text-slate-400 font-bold block">تاريخ بداية المشروع</span><span class="font-bold text-slate-700">${p['تاريخ البدء'] || '-'}</span></div>
-          <div><span class="text-slate-400 font-bold block">تاريخ نهاية المشروع</span><span class="font-bold text-slate-700">${p['تاريخ النهاية'] || '-'}</span></div>
-        </div>
-
-        <h4 class="font-bold text-slate-800 text-sm border-b pb-1 mt-4">الملخص المالي للمشروع</h4>
-        <div class="grid grid-cols-2 gap-3 text-xs">
-          <div class="bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-            <span class="text-slate-500 font-bold block">القيمة الإجمالية للمشروع</span>
-            <span class="text-base font-black text-blue-700">${pValue.toLocaleString()} ر.س</span>
-          </div>
-          <div class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100">
-            <span class="text-emerald-600 font-bold block">المستخلص المستلم (المحصل)</span>
-            <span class="text-base font-black text-emerald-700">${pCollected.toLocaleString()} ر.س</span>
-          </div>
-          <div class="bg-amber-50/50 p-3 rounded-xl border border-amber-100">
-            <span class="text-amber-600 font-bold block">المتبقي من المستخلص</span>
-            <span class="text-base font-black text-amber-700">${pRemaining.toLocaleString()} ر.س</span>
-          </div>
-          <div class="bg-rose-50/50 p-3 rounded-xl border border-rose-100">
-            <span class="text-rose-600 font-bold block">مصاريف المشروع</span>
-            <span class="text-base font-black text-rose-700">${pExpenses.toLocaleString()} ر.س</span>
-          </div>
-        </div>
-
-        <div class="bg-slate-900 text-white p-4 rounded-xl flex justify-between items-center mt-3">
-          <span class="font-bold text-xs">صافي ربح المشروع المقدر:</span>
-          <span class="text-lg font-black ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${netProfit.toLocaleString()} ر.س</span>
-        </div>
-      `;
-
-      document.getElementById('pd_btn_edit').onclick = () => editProject(p['ID']);
-      document.getElementById('pd_btn_delete').onclick = () => deleteProject(p['ID']);
-      document.getElementById('pd_btn_print').onclick = () => printProjectReport(p, pExpenses, pRemaining, netProfit);
-
-      openModal('projectDetailsModal');
-    }
-
-    function editProject(id) {
-      const p = allProjects.find(item => String(item['ID']) === String(id));
-      if (!p) return;
-
-      closeModal('projectDetailsModal');
-
-      document.getElementById('p_id').value = p['ID'];
-      document.getElementById('p_code').value = p['كود المشروع'] || '';
-      document.getElementById('p_name').value = p['اسم المشروع'] || '';
-      document.getElementById('p_client').value = p['العميل'] || '';
-      document.getElementById('p_location').value = p['الموقع'] || '';
-      document.getElementById('p_manager').value = p['مدير المشروع'] || '';
-      document.getElementById('p_val').value = p['القيمة الاجمالية'] || '';
-      document.getElementById('p_collected').value = p['المستخلص المحصل'] || 0;
-      document.getElementById('p_start').value = p['تاريخ البدء'] || '';
-      document.getElementById('p_end').value = p['تاريخ النهاية'] || '';
-      document.getElementById('p_status').value = p['حالة المشروع'] || 'تحت التنفيذ';
-
-      document.getElementById('projectModalTitle').innerText = 'تعديل بيانات المشروع';
-      openModal('projectModal');
-    }
-
-    async function saveProjectForm(e) {
-      e.preventDefault();
-
-      const record = {
-        'ID': document.getElementById('p_id').value,
-        'كود المشروع': document.getElementById('p_code').value.trim(),
-        'اسم المشروع': document.getElementById('p_name').value.trim(),
-        'العميل': document.getElementById('p_client').value.trim(),
-        'الموقع': document.getElementById('p_location').value.trim(),
-        'مدير المشروع': document.getElementById('p_manager').value.trim(),
-        'القيمة الاجمالية': document.getElementById('p_val').value,
-        'المستخلص المحصل': document.getElementById('p_collected').value || 0,
-        'تاريخ البدء': document.getElementById('p_start').value,
-        'تاريخ النهاية': document.getElementById('p_end').value,
-        'حالة المشروع': document.getElementById('p_status').value
-      };
-
-      await callBackend('saveRecord', 'المشاريع', record);
-      closeModal('projectModal');
+    async function deleteOrgDoc(id) {
+      if (!confirm('هل تريد حذف هذه الوثيقة؟')) return;
+      await callBackend('deleteRecord', { sheetName: 'وثائق الشركة', id: id });
       await fetchAllData();
-      renderProjectCards();
     }
 
-    async function deleteProject(id) {
-      if (confirm('هل أنت تأكد من إزالة هذا المشروع من القائمة؟')) {
-        await callBackend('deleteRecord', 'المشاريع', id);
-        closeModal('projectDetailsModal');
-        await fetchAllData();
-        renderProjectCards();
+    // 3. تصفية المصروفات والتصدير لـ Excel
+    function filterExpensesByDate() {
+      const startVal = document.getElementById('filterStartDate').value;
+      const endVal = document.getElementById('filterEndDate').value;
+
+      if (!startVal && !endVal) {
+        alert("يرجى تحديد تاريخ البداية أو تاريخ النهاية على الأقل.");
+        return;
       }
+
+      const start = startVal ? new Date(startVal) : new Date('1970-01-01');
+      const end = endVal ? new Date(endVal) : new Date('2099-12-31');
+      end.setHours(23, 59, 59, 999);
+
+      filteredExpensesList = allExpenses.filter(item => {
+        if (!item['التاريخ']) return false;
+        const d = new Date(item['التاريخ']);
+        return d >= start && d <= end;
+      });
+
+      renderExpensesTable(filteredExpensesList);
     }
 
-    function printProjectReport(p, expenses, remaining, netProfit) {
-      const printWin = window.open('', '', 'width=900,height=700');
-      printWin.document.write(`
-        <html dir="rtl" lang="ar">
-        <head>
-          <title>تقرير مشروع - ${p['اسم المشروع']}</title>
-          <style>
-            body { font-family: 'Cairo', sans-serif; padding: 30px; color: #1e293b; }
-            .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 25px; }
-            .title { font-size: 20px; font-weight: bold; color: #0f172a; }
-            .subtitle { font-size: 14px; color: #2563eb; font-weight: bold; margin-top: 5px; }
-            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-            .box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; font-size: 13px; }
-            .box strong { color: #475569; }
-            .table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
-            .table th, .table td { border: 1px solid #cbd5e1; padding: 10px; text-align: right; }
-            .table th { background: #0f172a; color: white; }
-            .footer { margin-top: 50px; display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="title">مؤسسة حسن خالد حسن فران للمقاولات العامة</div>
-            <div class="subtitle">تقرير تفصيلي وكشف حساب مشروع</div>
-          </div>
-
-          <div class="grid">
-            <div class="box"><strong>كود المشروع:</strong> ${p['كود المشروع']}</div>
-            <div class="box"><strong>اسم المشروع:</strong> ${p['اسم المشروع']}</div>
-            <div class="box"><strong>العميل:</strong> ${p['العميل']}</div>
-            <div class="box"><strong>حالة المشروع:</strong> ${p['حالة المشروع']}</div>
-            <div class="box"><strong>موقع المشروع:</strong> ${p['الموقع'] || '-'}</div>
-            <div class="box"><strong>مدير المشروع:</strong> ${p['مدير المشروع'] || '-'}</div>
-            <div class="box"><strong>تاريخ البدء:</strong> ${p['تاريخ البدء'] || '-'}</div>
-            <div class="box"><strong>تاريخ النهاية:</strong> ${p['تاريخ النهاية'] || '-'}</div>
-          </div>
-
-          <h3>الموقف المالي للمشروع</h3>
-          <table class="table">
-            <thead>
-              <tr>
-                <th>البيان المالي</th>
-                <th>القيمة بالريال السعودي</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>القيمة الإجمالية للمشروع</td><td><strong>${(parseFloat(p['القيمة الاجمالية'])||0).toLocaleString()} ر.س</strong></td></tr>
-              <tr><td>المستخلص المستلم (المحصل)</td><td><strong style="color: green;">${(parseFloat(p['المستخلص المحصل'])||0).toLocaleString()} ر.س</strong></td></tr>
-              <tr><td>المتبقي من المستخلص</td><td><strong style="color: orange;">${remaining.toLocaleString()} ر.س</strong></td></tr>
-              <tr><td>مصاريف المشروع الشاملة</td><td><strong style="color: red;">${expenses.toLocaleString()} ر.س</strong></td></tr>
-              <tr style="background: #f1f5f9;"><td><strong>صافي الأرباح المقدرة</strong></td><td><strong>${netProfit.toLocaleString()} ر.س</strong></td></tr>
-            </tbody>
-          </table>
-
-          <div class="footer">
-            <div>توقيع مدير المشروع: ..........................</div>
-            <div>توقيع الشؤون المالية: ..........................</div>
-          </div>
-        </body>
-        </html>
-      `);
-      printWin.document.close();
-      printWin.print();
+    function resetExpenseFilter() {
+      document.getElementById('filterStartDate').value = '';
+      document.getElementById('filterEndDate').value = '';
+      filteredExpensesList = [];
+      renderExpensesTable();
     }
 
-    // --- المصروفات ---
-    function renderExpensesTable() {
+    function renderExpensesTable(dataToRender = null) {
+      const expenses = dataToRender || allExpenses;
+      
+      // تحديث قائمة المشاريع في قائمة المصروفات
       const select = document.getElementById('e_projectCode');
       select.innerHTML = '<option value="">اختر المشروع</option>';
       allProjects.forEach(p => {
@@ -1128,12 +633,12 @@
 
       const tbody = document.getElementById('expensesTableBody');
       tbody.innerHTML = '';
-      if (allExpenses.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400 font-bold">لا يوجد مصروفات مضافة حالياً</td></tr>`;
+      if (expenses.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400 font-bold">لا يوجد مصروفات مطابقة للبحث</td></tr>`;
         return;
       }
 
-      allExpenses.forEach(e => {
+      expenses.forEach(e => {
         const fileBtn = e['رابط الفاتورة'] 
           ? `<a href="${e['رابط الفاتورة']}" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-bold text-xs"><i class="fa-solid fa-paperclip"></i> المعاينة</a>`
           : `<span class="text-slate-400 text-xs font-bold">لا يوجد</span>`;
@@ -1147,78 +652,20 @@
             <td class="p-4 text-xs text-slate-500 max-w-xs truncate">${e['ملاحظات'] || '-'}</td>
             <td class="p-4 text-center">${fileBtn}</td>
             <td class="p-4 text-center">
-              <div class="flex items-center justify-center gap-2">
-                <button onclick="editExpense('${e['ID']}')" title="تعديل المصروف" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-pen-to-square text-xs"></i>
-                </button>
-                <button onclick="deleteExpense('${e['ID']}')" title="حذف المصروف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-trash text-xs"></i>
-                </button>
-              </div>
+              <button onclick="deleteExpense('${e['ID']}')" title="حذف المصروف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 inline-flex items-center justify-center">
+                <i class="fa-solid fa-trash text-xs"></i>
+              </button>
             </td>
           </tr>
         `;
       });
     }
 
-    function openNewExpenseModal() {
-      document.getElementById('e_id').value = '';
-      document.getElementById('e_existing_file').value = '';
-      document.getElementById('e_projectCode').value = '';
-      document.getElementById('e_title').value = '';
-      document.getElementById('e_amount').value = '';
-      document.getElementById('e_date').value = '';
-      document.getElementById('e_notes').value = '';
-      document.getElementById('e_file').value = '';
-      
-      const existingNotice = document.getElementById('existingFileNotice');
-      existingNotice.innerText = '';
-      existingNotice.classList.add('hidden');
-
-      document.getElementById('expenseModalTitle').innerText = 'إدخال مصروف جديد';
-      openModal('expenseModal');
-    }
-
-    function editExpense(id) {
-      const e = allExpenses.find(item => String(item['ID']) === String(id));
-      if (!e) return;
-
-      document.getElementById('e_id').value = e['ID'];
-      document.getElementById('e_existing_file').value = e['رابط الفاتورة'] || '';
-      document.getElementById('e_projectCode').value = e['كود المشروع'] || '';
-      document.getElementById('e_title').value = e['بند المصروف'] || '';
-      document.getElementById('e_amount').value = e['المبلغ'] || '';
-      document.getElementById('e_date').value = e['التاريخ'] || '';
-      document.getElementById('e_notes').value = e['ملاحظات'] || '';
-      document.getElementById('e_file').value = '';
-
-      const existingNotice = document.getElementById('existingFileNotice');
-      if (e['رابط الفاتورة']) {
-        existingNotice.innerText = '✓ يوجد فاتورة مرفقة سابقاً. ارفع ملف جديد فقط في حال رغبتك باستبدال القديم.';
-        existingNotice.classList.remove('hidden');
-      } else {
-        existingNotice.innerText = '';
-        existingNotice.classList.add('hidden');
-      }
-
-      document.getElementById('expenseModalTitle').innerText = 'تعديل بيانات المصروف';
-      openModal('expenseModal');
-    }
-
-    async function deleteExpense(id) {
-      if (confirm('هل أنت تأكد من إزالة هذا المصروف؟')) {
-        await callBackend('deleteRecord', 'المصروفات', id);
-        await fetchAllData();
-        renderExpensesTable();
-      }
-    }
-
     async function saveExpense(e) {
       e.preventDefault();
-      
       const submitBtn = document.getElementById('e_btn_submit');
       submitBtn.disabled = true;
-      submitBtn.innerText = 'جاري الحفظ والرفع...';
+      submitBtn.innerText = 'جاري الحفظ...';
 
       const fileInput = document.getElementById('e_file');
       let fileUrl = document.getElementById('e_existing_file').value;
@@ -1227,713 +674,101 @@
         const file = fileInput.files[0];
         const base64Data = await convertFileToBase64(file);
         
-        const uploadRes = await callBackend('uploadFileToDrive', {
-          fileName: file.name,
-          mimeType: file.type,
-          data: base64Data
+        const uploadRes = await callBackend('uploadFile', {
+          fileData: { fileName: file.name, mimeType: file.type, data: base64Data }
         });
 
         if (uploadRes && uploadRes.success) {
           fileUrl = uploadRes.url;
-        } else {
-          alert('تعذر رفع الفاتورة: ' + (uploadRes ? uploadRes.message : 'خطأ غير معروف'));
-          submitBtn.disabled = false;
-          submitBtn.innerText = 'حفظ البيانات';
-          return;
         }
       }
 
       const record = {
         'ID': document.getElementById('e_id').value,
         'كود المشروع': document.getElementById('e_projectCode').value,
-        'بند المصروف': document.getElementById('e_title').value,
+        'بند المصروف': document.getElementById('e_title').value.trim(),
         'المبلغ': document.getElementById('e_amount').value,
         'التاريخ': document.getElementById('e_date').value,
-        'ملاحظات': document.getElementById('e_notes').value,
+        'ملاحظات': document.getElementById('e_notes').value.trim(),
         'رابط الفاتورة': fileUrl
       };
 
-      await callBackend('saveRecord', 'المصروفات', record);
+      await callBackend('saveRecord', { sheetName: 'المصروفات', record: record });
       submitBtn.disabled = false;
-      submitBtn.innerText = 'حفظ البيانات';
+      submitBtn.innerText = 'حفظ المصروف';
       closeModal('expenseModal');
       await fetchAllData();
-      renderExpensesTable();
     }
 
-    function convertFileToBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-        reader.readAsDataURL(file);
-      });
+    async function deleteExpense(id) {
+      if (!confirm('هل تريد حذف هذا المصروف؟')) return;
+      await callBackend('deleteRecord', { sheetName: 'المصروفات', id: id });
+      await fetchAllData();
     }
 
-    // --- الموظفين والرواتب ---
-    function renderEmployeesTable() {
-      const tbody = document.getElementById('employeesTableBody');
-      tbody.innerHTML = '';
+    // تصدير المصروفات إلى Excel
+    function exportExpensesToExcel() {
+      const expensesToExport = filteredExpensesList.length > 0 ? filteredExpensesList : allExpenses;
 
-      if (allEmployees.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400 font-bold">لا يوجد موظفين مضافين حالياً</td></tr>`;
+      if (expensesToExport.length === 0) {
+        alert("لا توجد بيانات مصروفات لتصديرها.");
         return;
       }
 
-      const today = new Date();
+      const excelData = expensesToExport.map(item => ({
+        "كود المشروع": item['كود المشروع'] || '',
+        "بند المصروف": item['بند المصروف'] || '',
+        "المبلغ (ر.س)": parseFloat(item['المبلغ']) || 0,
+        "التاريخ": item['التاريخ'] || '',
+        "الملاحظات": item['ملاحظات'] || '',
+        "رابط الفاتورة": item['رابط الفاتورة'] || ''
+      }));
 
-      allEmployees.forEach(emp => {
-        let iqamaStatusClass = 'bg-slate-100 text-slate-700';
-        if (emp['تاريخ انتهاء الإقامة']) {
-          const expDate = new Date(emp['تاريخ انتهاء الإقامة']);
-          const diffDays = (expDate - today) / (1000 * 60 * 60 * 24);
-          if (diffDays <= 30 && diffDays >= 0) {
-            iqamaStatusClass = 'bg-amber-100 text-amber-800 font-bold';
-          } else if (diffDays < 0) {
-            iqamaStatusClass = 'bg-rose-100 text-rose-800 font-bold';
-          }
-        }
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "المصروفات");
 
+      const startDate = document.getElementById('filterStartDate').value;
+      const endDate = document.getElementById('filterEndDate').value;
+      let fileName = "تقرير_المصروفات";
+      if (startDate || endDate) {
+        fileName += `_من_${startDate || 'البداية'}_إلى_${endDate || 'اليوم'}`;
+      }
+      fileName += ".xlsx";
+
+      XLSX.writeFile(workbook, fileName);
+    }
+
+    // 4. إدارة المشاريع
+    function renderProjectsTable() {
+      const tbody = document.getElementById('projectsTableBody');
+      tbody.innerHTML = '';
+      if (allProjects.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 font-bold">لا يوجد مشاريع مسجلة</td></tr>`;
+        return;
+      }
+
+      allProjects.forEach(p => {
         tbody.innerHTML += `
           <tr class="hover:bg-slate-50 font-semibold">
-            <td class="p-4 font-bold text-blue-600">${emp['رقم الموظف']}</td>
-            <td class="p-4">${emp['اسم الموظف']}</td>
-            <td class="p-4">${emp['رقم الهوية']}</td>
-            <td class="p-4">${emp['المهنة']}</td>
-            <td class="p-4 font-bold text-slate-800">${(parseFloat(emp['الراتب الأساسي'])||0).toLocaleString()} ر.س</td>
-            <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs ${iqamaStatusClass}">${emp['تاريخ انتهاء الإقامة'] || '-'}</span></td>
+            <td class="p-4 font-bold text-blue-600">${p['كود المشروع']}</td>
+            <td class="p-4">${p['اسم المشروع']}</td>
+            <td class="p-4">${p['العميل']}</td>
+            <td class="p-4 font-bold text-emerald-600">${(parseFloat(p['الميزانية'])||0).toLocaleString()} ر.س</td>
             <td class="p-4 text-center">
-              <div class="flex items-center justify-center gap-2">
-                <button onclick="openSalarySlipModal('${emp['ID']}')" title="مسير راتب" class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center gap-1 font-bold text-xs transition">
-                  <i class="fa-solid fa-file-invoice-dollar"></i> مسير راتب
-                </button>
-                <button onclick="editEmployee('${emp['ID']}')" title="تعديل الموظف" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-pen-to-square text-xs"></i>
-                </button>
-                <button onclick="deleteEmployee('${emp['ID']}')" title="حذف الموظف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-trash text-xs"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      });
-    }
-
-    function openNewEmployeeModal() {
-      document.getElementById('emp_id').value = '';
-      document.getElementById('emp_code').value = '';
-      document.getElementById('emp_name').value = '';
-      document.getElementById('emp_iqama').value = '';
-      document.getElementById('emp_job').value = '';
-      document.getElementById('emp_salary').value = '';
-      document.getElementById('emp_iqama_date').value = '';
-      document.getElementById('emp_dob').value = '';
-      document.getElementById('emp_blood').value = '';
-
-      document.getElementById('employeeModalTitle').innerText = 'إضافة موظف جديد';
-      openModal('employeeModal');
-    }
-
-    function editEmployee(id) {
-      const emp = allEmployees.find(item => String(item['ID']) === String(id));
-      if (!emp) return;
-
-      document.getElementById('emp_id').value = emp['ID'];
-      document.getElementById('emp_code').value = emp['رقم الموظف'] || '';
-      document.getElementById('emp_name').value = emp['اسم الموظف'] || '';
-      document.getElementById('emp_iqama').value = emp['رقم الهوية'] || '';
-      document.getElementById('emp_job').value = emp['المهنة'] || '';
-      document.getElementById('emp_salary').value = emp['الراتب الأساسي'] || '';
-      document.getElementById('emp_iqama_date').value = emp['تاريخ انتهاء الإقامة'] || '';
-      document.getElementById('emp_dob').value = emp['تاريخ الميلاد'] || '';
-      document.getElementById('emp_blood').value = emp['فصيلة الدم'] || '';
-
-      document.getElementById('employeeModalTitle').innerText = 'تعديل بيانات موظف';
-      openModal('employeeModal');
-    }
-
-    async function saveEmployee(e) {
-      e.preventDefault();
-
-      const record = {
-        'ID': document.getElementById('emp_id').value,
-        'رقم الموظف': document.getElementById('emp_code').value.trim(),
-        'اسم الموظف': document.getElementById('emp_name').value.trim(),
-        'رقم الهوية': document.getElementById('emp_iqama').value.trim(),
-        'المهنة': document.getElementById('emp_job').value.trim(),
-        'الراتب الأساسي': document.getElementById('emp_salary').value,
-        'تاريخ انتهاء الإقامة': document.getElementById('emp_iqama_date').value,
-        'تاريخ الميلاد': document.getElementById('emp_dob').value,
-        'فصيلة الدم': document.getElementById('emp_blood').value
-      };
-
-      await callBackend('saveRecord', 'الموظفين', record);
-      closeModal('employeeModal');
-      await fetchAllData();
-      renderEmployeesTable();
-    }
-
-    async function deleteEmployee(id) {
-      if (confirm('هل أنت تأكد من إزالة هذا الموظف؟')) {
-        await callBackend('deleteRecord', 'الموظفين', id);
-        await fetchAllData();
-        renderEmployeesTable();
-      }
-    }
-
-    // --- المسيرات وقسائم الرواتب ---
-    function openSalarySlipModal(empId) {
-      const emp = allEmployees.find(item => String(item['ID']) === String(empId));
-      if (!emp) return;
-
-      document.getElementById('slip_emp_code').value = emp['رقم الموظف'];
-      document.getElementById('slip_emp_name').value = emp['اسم الموظف'];
-      document.getElementById('slip_basic').value = emp['الراتب الأساسي'] || 0;
-      document.getElementById('slip_bonus').value = 0;
-      document.getElementById('slip_deduction').value = 0;
-
-      const currentYearMonth = new Date().toISOString().slice(0, 7);
-      document.getElementById('slip_month').value = currentYearMonth;
-
-      calculateNetSalary();
-      openModal('salarySlipModal');
-    }
-
-    function calculateNetSalary() {
-      const basic = parseFloat(document.getElementById('slip_basic').value) || 0;
-      const bonus = parseFloat(document.getElementById('slip_bonus').value) || 0;
-      const deduction = parseFloat(document.getElementById('slip_deduction').value) || 0;
-      const net = basic + bonus - deduction;
-
-      document.getElementById('slip_net').innerText = net.toLocaleString() + ' ر.س';
-    }
-
-    function generateSalarySlip(e) {
-      e.preventDefault();
-
-      const empCode = document.getElementById('slip_emp_code').value;
-      const empName = document.getElementById('slip_emp_name').value;
-      const month = document.getElementById('slip_month').value;
-      const basic = parseFloat(document.getElementById('slip_basic').value) || 0;
-      const bonus = parseFloat(document.getElementById('slip_bonus').value) || 0;
-      const deduction = parseFloat(document.getElementById('slip_deduction').value) || 0;
-      const net = basic + bonus - deduction;
-
-      const printWin = window.open('', '', 'width=800,height=600');
-      printWin.document.write(`
-        <html dir="rtl" lang="ar">
-        <head>
-          <title>قسيمة راتب - ${empName}</title>
-          <style>
-            body { font-family: 'Cairo', sans-serif; padding: 40px; color: #1e293b; }
-            .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 25px; }
-            .title { font-size: 20px; font-weight: bold; color: #0f172a; }
-            .subtitle { font-size: 14px; color: #2563eb; font-weight: bold; margin-top: 5px; }
-            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
-            .box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; font-size: 13px; }
-            .table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
-            .table th, .table td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; }
-            .table th { background: #0f172a; color: white; }
-            .total-box { background: #0f172a; color: white; padding: 15px; font-size: 16px; font-weight: bold; text-align: center; margin-top: 25px; border-radius: 8px; }
-            .footer { margin-top: 60px; display: flex; justify-content: space-between; font-weight: bold; font-size: 13px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="title">مؤسسة حسن خالد حسن فران للمقاولات العامة</div>
-            <div class="subtitle">قسيمة تحويل / صرف راتب شهر (${month})</div>
-          </div>
-
-          <div class="info-grid">
-            <div class="box"><strong>رقم الموظف:</strong> ${empCode}</div>
-            <div class="box"><strong>اسم الموظف:</strong> ${empName}</div>
-          </div>
-
-          <table class="table">
-            <thead>
-              <tr>
-                <th>البيان</th>
-                <th>المبلغ بالريال السعودي</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>الراتب الأساسي</td><td>${basic.toLocaleString()} ر.س</td></tr>
-              <tr><td>البدلات والإضافي (+)</td><td>${bonus.toLocaleString()} ر.س</td></tr>
-              <tr><td>الخصومات والحسميات (-)</td><td>${deduction.toLocaleString()} ر.س</td></tr>
-            </tbody>
-          </table>
-
-          <div class="total-box">
-            صافي المبلغ المستحق للصرف: ${net.toLocaleString()} ر.س
-          </div>
-
-          <div class="footer">
-            <div>توقيع الموظف المستلم: ..........................</div>
-            <div>توقيع مدير الشؤون المالية: ..........................</div>
-          </div>
-        </body>
-        </html>
-      `);
-      printWin.document.close();
-      printWin.print();
-
-      closeModal('salarySlipModal');
-    }
-
-    // --- العقود والخطابات ---
-    function renderLettersTable() {
-      const tbody = document.getElementById('lettersTableBody');
-      tbody.innerHTML = '';
-
-      if (allLetters.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400 font-bold">لا يوجد خطابات أو عقود مضافة حالياً</td></tr>`;
-        return;
-      }
-
-      allLetters.forEach(l => {
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50 font-semibold">
-            <td class="p-4 font-bold text-slate-800">${l['اسم الخطاب']}</td>
-            <td class="p-4">${l['الجهة'] || '-'}</td>
-            <td class="p-4">${l['تاريخ الخطاب'] || '-'}</td>
-            <td class="p-4 text-center">
-              <div class="flex items-center justify-center gap-2">
-                <button onclick="previewFile('${l['رابط الملف']}')" title="معاينة" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-eye text-xs"></i>
-                </button>
-                <button onclick="printFile('${l['رابط الملف']}')" title="طباعة" class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center justify-center transition">
-                  <i class="fa-solid fa-print text-xs"></i>
-                </button>
-                <button onclick="editLetter('${l['ID']}')" title="تعديل" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-pen-to-square text-xs"></i>
-                </button>
-                <button onclick="deleteLetter('${l['ID']}')" title="حذف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-trash text-xs"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      });
-    }
-
-    function openNewLetterModal() {
-      document.getElementById('l_id').value = '';
-      document.getElementById('l_existing_file').value = '';
-      document.getElementById('l_title').value = '';
-      document.getElementById('l_entity').value = '';
-      document.getElementById('l_date').value = '';
-      document.getElementById('l_file').value = '';
-
-      const notice = document.getElementById('l_existingFileNotice');
-      notice.innerText = '';
-      notice.classList.add('hidden');
-
-      document.getElementById('letterModalTitle').innerText = 'إضافة خطاب / عقد جديد';
-      openModal('letterModal');
-    }
-
-    function editLetter(id) {
-      const l = allLetters.find(item => String(item['ID']) === String(id));
-      if (!l) return;
-
-      document.getElementById('l_id').value = l['ID'];
-      document.getElementById('l_existing_file').value = l['رابط الملف'] || '';
-      document.getElementById('l_title').value = l['اسم الخطاب'] || '';
-      document.getElementById('l_entity').value = l['الجهة'] || '';
-      document.getElementById('l_date').value = l['تاريخ الخطاب'] || '';
-      document.getElementById('l_file').value = '';
-
-      const notice = document.getElementById('l_existingFileNotice');
-      if (l['رابط الملف']) {
-        notice.innerText = '✓ يوجد ملف مرفق سابقاً. ارفع ملف جديد فقط في حال رغبتك باستبداله.';
-        notice.classList.remove('hidden');
-      } else {
-        notice.innerText = '';
-        notice.classList.add('hidden');
-      }
-
-      document.getElementById('letterModalTitle').innerText = 'تعديل البيانات';
-      openModal('letterModal');
-    }
-
-    async function saveLetter(e) {
-      e.preventDefault();
-      const submitBtn = document.getElementById('l_btn_submit');
-      submitBtn.disabled = true;
-      submitBtn.innerText = 'جاري الحفظ...';
-
-      const fileInput = document.getElementById('l_file');
-      let fileUrl = document.getElementById('l_existing_file').value;
-
-      if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        const base64Data = await convertFileToBase64(file);
-        const uploadRes = await callBackend('uploadFileToDrive', {
-          fileName: file.name,
-          mimeType: file.type,
-          data: base64Data
-        });
-
-        if (uploadRes && uploadRes.success) {
-          fileUrl = uploadRes.url;
-        } else {
-          alert('تعذر رفع الملف: ' + (uploadRes ? uploadRes.message : 'خطأ غير معروف'));
-          submitBtn.disabled = false;
-          submitBtn.innerText = 'حفظ البيانات';
-          return;
-        }
-      }
-
-      const record = {
-        'ID': document.getElementById('l_id').value,
-        'اسم الخطاب': document.getElementById('l_title').value.trim(),
-        'الجهة': document.getElementById('l_entity').value.trim(),
-        'تاريخ الخطاب': document.getElementById('l_date').value,
-        'رابط الملف': fileUrl
-      };
-
-      await callBackend('saveRecord', 'العقود والخطابات', record);
-      submitBtn.disabled = false;
-      submitBtn.innerText = 'حفظ البيانات';
-      closeModal('letterModal');
-      await fetchAllData();
-      renderLettersTable();
-    }
-
-    async function deleteLetter(id) {
-      if (confirm('هل أنت تأكد من إزالة هذا الخطاب / العقد؟')) {
-        await callBackend('deleteRecord', 'العقود والخطابات', id);
-        await fetchAllData();
-        renderLettersTable();
-      }
-    }
-
-    // --- 6. وثائق المؤسسة ---
-    function renderOrgDocsCards() {
-      const container = document.getElementById('orgDocsCardsContainer');
-      container.innerHTML = '';
-
-      if (allOrgDocs.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 font-bold">لا يوجد وثائق مضافة حالياً. اضغط على زر "إضافة وثيقة جديدة".</div>`;
-        return;
-      }
-
-      const today = new Date();
-
-      allOrgDocs.forEach(d => {
-        let statusBadge = 'bg-emerald-100 text-emerald-800';
-        let statusText = 'سارية';
-
-        if (d['تاريخ الانتهاء']) {
-          const expDate = new Date(d['تاريخ الانتهاء']);
-          const diffDays = (expDate - today) / (1000 * 60 * 60 * 24);
-          if (diffDays <= 30 && diffDays >= 0) {
-            statusBadge = 'bg-amber-100 text-amber-800';
-            statusText = 'قريبة الانتهاء';
-          } else if (diffDays < 0) {
-            statusBadge = 'bg-rose-100 text-rose-800';
-            statusText = 'منتهية';
-          }
-        }
-
-        const url = d['رابط المستند'] || d['رابط الوثيقة'] || '';
-
-        container.innerHTML += `
-          <div class="bg-white rounded-2xl p-5 border shadow-sm flex flex-col justify-between border-t-4 border-t-blue-600">
-            <div>
-              <div class="flex justify-between items-start mb-3">
-                <h3 class="font-black text-lg text-slate-800">${d['اسم الوثيقة']}</h3>
-                <span class="text-xs px-2.5 py-1 rounded-full font-bold ${statusBadge}">${statusText}</span>
-              </div>
-              <div class="text-xs text-slate-600 mb-4 font-semibold">
-                <p><i class="fa-solid fa-calendar-xmark text-slate-400 w-4"></i> <strong>تاريخ الانتهاء:</strong> ${d['تاريخ الانتهاء'] || '-'}</p>
-              </div>
-            </div>
-            <div class="pt-3 border-t flex items-center justify-end gap-2">
-              <button onclick="previewFile('${url}')" title="معاينة" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold transition flex items-center gap-1">
-                <i class="fa-solid fa-eye"></i> معاينة
-              </button>
-              <button onclick="printFile('${url}')" title="طباعة" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold transition flex items-center gap-1">
-                <i class="fa-solid fa-print"></i> طباعة
-              </button>
-              <button onclick="editOrgDoc('${d['ID']}')" title="تعديل" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
-                <i class="fa-solid fa-pen-to-square text-xs"></i>
-              </button>
-              <button onclick="deleteOrgDoc('${d['ID']}')" title="حذف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
+              <button onclick="deleteProject('${p['ID']}')" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 inline-flex items-center justify-center">
                 <i class="fa-solid fa-trash text-xs"></i>
               </button>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    function printAllOrgDocs() {
-      if (!allOrgDocs || allOrgDocs.length === 0) {
-        alert("لا توجد وثائق متاحة للطباعة حالياً.");
-        return;
-      }
-
-      const today = new Date();
-      let rowsHtml = '';
-
-      allOrgDocs.forEach((d, index) => {
-        let statusText = 'سارية';
-        let statusColor = 'green';
-
-        if (d['تاريخ الانتهاء']) {
-          const expDate = new Date(d['تاريخ الانتهاء']);
-          const diffDays = (expDate - today) / (1000 * 60 * 60 * 24);
-          if (diffDays <= 30 && diffDays >= 0) {
-            statusText = 'قريبة الانتهاء';
-            statusColor = 'orange';
-          } else if (diffDays < 0) {
-            statusText = 'منتهية';
-            statusColor = 'red';
-          }
-        }
-
-        const fileLink = d['رابط المستند'] || d['رابط الوثيقة'] || '#';
-
-        rowsHtml += `
-          <tr>
-            <td style="text-align: center;">${index + 1}</td>
-            <td><strong>${d['اسم الوثيقة'] || '-'}</strong></td>
-            <td>${d['تاريخ الانتهاء'] || '-'}</td>
-            <td style="color: ${statusColor}; font-weight: bold;">${statusText}</td>
-            <td><a href="${fileLink}" target="_blank" style="color: #2563eb; text-decoration: none;">فتح المستند</a></td>
-          </tr>
-        `;
-      });
-
-      const printWin = window.open('', '', 'width=900,height=700');
-      printWin.document.write(`
-        <html dir="rtl" lang="ar">
-        <head>
-          <title>سجل كافة وثائق ومستندات المؤسسة</title>
-          <style>
-            body { font-family: 'Cairo', sans-serif; padding: 30px; color: #1e293b; }
-            .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 25px; }
-            .title { font-size: 20px; font-weight: bold; color: #0f172a; }
-            .subtitle { font-size: 14px; color: #2563eb; font-weight: bold; margin-top: 5px; }
-            .table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
-            .table th, .table td { border: 1px solid #cbd5e1; padding: 10px; text-align: right; }
-            .table th { background: #0f172a; color: white; }
-            .footer { margin-top: 50px; display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="title">مؤسسة حسن خالد حسن فران للمقاولات العامة</div>
-            <div class="subtitle">تقرير شامل بكافة وثائق وسجلات المؤسسة الرسمية</div>
-          </div>
-
-          <table class="table">
-            <thead>
-              <tr>
-                <th style="width: 50px; text-align: center;">#</th>
-                <th>اسم الوثيقة / السجل</th>
-                <th>تاريخ الانتهاء</th>
-                <th>الحالة الحالية</th>
-                <th>الرابط المباشر</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml}
-            </tbody>
-          </table>
-
-          <div class="footer">
-            <div>التاريخ: ${new Date().toLocaleDateString('ar-SA')}</div>
-            <div>اعتماد الشؤون الإدارية: ..........................</div>
-          </div>
-        </body>
-        </html>
-      `);
-      printWin.document.close();
-      printWin.print();
-    }
-
-    function openNewOrgDocModal() {
-      document.getElementById('od_id').value = '';
-      document.getElementById('od_existing_file').value = '';
-      document.getElementById('od_title').value = '';
-      document.getElementById('od_exp_date').value = '';
-      document.getElementById('od_file').value = '';
-
-      const notice = document.getElementById('od_existingFileNotice');
-      notice.innerText = '';
-      notice.classList.add('hidden');
-
-      document.getElementById('orgDocModalTitle').innerText = 'إضافة وثيقة جديدة';
-      openModal('orgDocModal');
-    }
-
-    function editOrgDoc(id) {
-      const d = allOrgDocs.find(item => String(item['ID']) === String(id));
-      if (!d) return;
-
-      document.getElementById('od_id').value = d['ID'];
-      document.getElementById('od_existing_file').value = d['رابط المستند'] || d['رابط الوثيقة'] || '';
-      document.getElementById('od_title').value = d['اسم الوثيقة'] || '';
-      document.getElementById('od_exp_date').value = d['تاريخ الانتهاء'] || '';
-      document.getElementById('od_file').value = '';
-
-      const notice = document.getElementById('od_existingFileNotice');
-      if (d['رابط المستند'] || d['رابط الوثيقة']) {
-        notice.innerText = '✓ يوجد ملف مرفق سابقاً. ارفع ملف جديد فقط في حال رغبتك باستبداله.';
-        notice.classList.remove('hidden');
-      } else {
-        notice.innerText = '';
-        notice.classList.add('hidden');
-      }
-
-      document.getElementById('orgDocModalTitle').innerText = 'تعديل وثيقة';
-      openModal('orgDocModal');
-    }
-
-    async function saveOrgDoc(e) {
-      e.preventDefault();
-      const submitBtn = document.getElementById('od_btn_submit');
-      submitBtn.disabled = true;
-      submitBtn.innerText = 'جاري الحفظ...';
-
-      const fileInput = document.getElementById('od_file');
-      let fileUrl = document.getElementById('od_existing_file').value;
-
-      if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        const base64Data = await convertFileToBase64(file);
-        const uploadRes = await callBackend('uploadFileToDrive', {
-          fileName: file.name,
-          mimeType: file.type,
-          data: base64Data
-        });
-
-        if (uploadRes && uploadRes.success) {
-          fileUrl = uploadRes.url;
-        } else {
-          alert('تعذر رفع الملف: ' + (uploadRes ? uploadRes.message : 'خطأ غير معروف'));
-          submitBtn.disabled = false;
-          submitBtn.innerText = 'حفظ البيانات';
-          return;
-        }
-      }
-
-      const record = {
-        'ID': document.getElementById('od_id').value,
-        'اسم الوثيقة': document.getElementById('od_title').value.trim(),
-        'تاريخ الانتهاء': document.getElementById('od_exp_date').value,
-        'رابط المستند': fileUrl
-      };
-
-      await callBackend('saveRecord', 'وثائق الشركة', record);
-      submitBtn.disabled = false;
-      submitBtn.innerText = 'حفظ البيانات';
-      closeModal('orgDocModal');
-      await fetchAllData();
-      renderOrgDocsCards();
-    }
-
-    async function deleteOrgDoc(id) {
-      if (confirm('هل أنت تأكد من إزالة هذه الوثيقة؟')) {
-        await callBackend('deleteRecord', 'وثائق الشركة', id);
-        await fetchAllData();
-        renderOrgDocsCards();
-      }
-    }
-
-    function previewFile(url) {
-      if (!url) return alert('لا يوجد رابط ملف للمعاينة');
-      window.open(url, '_blank');
-    }
-
-    function printFile(url) {
-      if (!url) return alert('لا يوجد ملف للطباعة');
-      window.open(url, '_blank');
-    }
-
-    // --- 7. إدارة المستخدمين ---
-    function renderUsersTable() {
-      const tbody = document.getElementById('usersTableBody');
-      tbody.innerHTML = '';
-
-      if (allUsers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400 font-bold">لا يوجد مستخدمين مضافين حالياً</td></tr>`;
-        return;
-      }
-
-      allUsers.forEach(u => {
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50 font-semibold">
-            <td class="p-4 font-bold text-slate-800">${u['الاسم']}</td>
-            <td class="p-4">${u['البريد الإلكتروني']}</td>
-            <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">${u['الدور'] || 'مدير النظام'}</span></td>
-            <td class="p-4 text-center">
-              <div class="flex items-center justify-center gap-2">
-                <button onclick="editUser('${u['ID']}')" title="تعديل" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-pen-to-square text-xs"></i>
-                </button>
-                <button onclick="deleteUser('${u['ID']}')" title="حذف" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition">
-                  <i class="fa-solid fa-trash text-xs"></i>
-                </button>
-              </div>
             </td>
           </tr>
         `;
       });
     }
 
-    function openNewUserModal() {
-      document.getElementById('u_id').value = '';
-      document.getElementById('u_name').value = '';
-      document.getElementById('u_email').value = '';
-      document.getElementById('u_password').value = '';
-      document.getElementById('u_role').value = 'مدير النظام';
-
-      document.getElementById('userModalTitle').innerText = 'إضافة مستخدم جديد';
-      openModal('userModal');
-    }
-
-    function editUser(id) {
-      const u = allUsers.find(item => String(item['ID']) === String(id));
-      if (!u) return;
-
-      document.getElementById('u_id').value = u['ID'];
-      document.getElementById('u_name').value = u['الاسم'] || '';
-      document.getElementById('u_email').value = u['البريد الإلكتروني'] || '';
-      document.getElementById('u_password').value = u['كلمة المرور'] || '';
-      document.getElementById('u_role').value = u['الدور'] || 'مدير النظام';
-
-      document.getElementById('userModalTitle').innerText = 'تعديل بيانات المستخدم';
-      openModal('userModal');
-    }
-
-    async function saveUser(e) {
-      e.preventDefault();
-
-      const record = {
-        'ID': document.getElementById('u_id').value,
-        'الاسم': document.getElementById('u_name').value.trim(),
-        'البريد الإلكتروني': document.getElementById('u_email').value.trim(),
-        'كلمة المرور': document.getElementById('u_password').value.trim(),
-        'الدور': document.getElementById('u_role').value
-      };
-
-      await callBackend('saveRecord', 'المستخدمين', record);
-      closeModal('userModal');
+    async function deleteProject(id) {
+      if (!confirm('هل تريد حذف هذا المشروع؟')) return;
+      await callBackend('deleteRecord', { sheetName: 'المشاريع', id: id });
       await fetchAllData();
-      renderUsersTable();
-    }
-
-    async function deleteUser(id) {
-      if (confirm('هل أنت تأكد من إزالة هذا المستخدم؟')) {
-        await callBackend('deleteRecord', 'المستخدمين', id);
-        await fetchAllData();
-        renderUsersTable();
-      }
     }
   </script>
 </body>
