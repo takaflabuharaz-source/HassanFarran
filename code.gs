@@ -87,7 +87,7 @@ function getAllAppData() {
   return result;
 }
 
-// دالة رفع الملفات إلى Google Drive مع تحسين التوافق
+// دالة رفع الملفات إلى Google Drive وتحويل الرابط للمعاينة المباشرة
 function uploadFileToDrive(fileData) {
   try {
     const folderName = "فواتير ومستندات المؤسسة";
@@ -106,23 +106,21 @@ function uploadFileToDrive(fileData) {
     const file = folder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-    return { success: true, url: file.getUrl() };
+    // تحويل الرابط لرابط معاينة مباشر يدعم العرض داخل العناوين و iframe
+    var previewUrl = "https://drive.google.com/file/d/" + file.getId() + "/preview";
+
+    return { success: true, url: previewUrl, rawUrl: file.getUrl() };
   } catch (error) {
     return { success: false, message: error.toString() };
   }
 }
 
-// تسجيل الدخول
 function checkLogin(email, password) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("المستخدمين");
-  if (!sheet) {
-    return { success: true, user: { email: email, role: 'مدير النظام' } }; 
-  }
+  if (!sheet) return { success: true, user: { email: email, role: 'مدير النظام' } }; 
   
   var data = sheet.getDataRange().getValues();
-  if (data.length <= 1) {
-    return { success: true, user: { email: email, role: 'مدير النظام' } };
-  }
+  if (data.length <= 1) return { success: true, user: { email: email, role: 'مدير النظام' } };
   
   var headers = data[0];
   var emailIdx = headers.indexOf("البريد الإلكتروني");
@@ -135,19 +133,13 @@ function checkLogin(email, password) {
         String(data[i][passIdx]).trim() === String(password).trim()) {
       return {
         success: true,
-        user: {
-          name: data[i][nameIdx],
-          email: data[i][emailIdx],
-          role: data[i][roleIdx] || 'مدير النظام'
-        }
+        user: { name: data[i][nameIdx], email: data[i][emailIdx], role: data[i][roleIdx] || 'مدير النظام' }
       };
     }
   }
-  
   return { success: false, message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" };
 }
 
-// جلب البيانات من شيت محدد
 function getData(sheetName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
@@ -173,7 +165,6 @@ function getData(sheetName) {
   });
 }
 
-// حفظ أو تعديل سجل
 function saveRecord(sheetName, record) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(sheetName);
@@ -205,7 +196,6 @@ function saveRecord(sheetName, record) {
   return { success: true, message: 'تم الحفظ بنجاح' };
 }
 
-// حذف سجل
 function deleteRecord(sheetName, id) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
@@ -224,7 +214,6 @@ function deleteRecord(sheetName, id) {
   return { success: false, message: 'لم يتم العثور على السجل' };
 }
 
-// بيانات لوحة التحكم
 function getDashboardData() {
   const projects = getData('المشاريع');
   const expenses = getData('المصروفات');
@@ -258,15 +247,7 @@ function getDashboardData() {
   });
 
   return {
-    stats: {
-      totalContractValue,
-      totalCollected,
-      totalRemaining: totalContractValue - totalCollected,
-      totalExpenses,
-      projectsCount: projects.length
-    },
-    expiringDocs,
-    expiringIqamas,
-    projects
+    stats: { totalContractValue, totalCollected, totalRemaining: totalContractValue - totalCollected, totalExpenses, projectsCount: projects.length },
+    expiringDocs, expiringIqamas, projects
   };
 }
