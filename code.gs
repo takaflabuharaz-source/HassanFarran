@@ -50,7 +50,6 @@ function doPost(e) {
   }
 }
 
-// دالة قراءة كافة الجداول في الشيت ديناميكياً بدون فقدان أي بيانات
 function getAllAppData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = ss.getSheets();
