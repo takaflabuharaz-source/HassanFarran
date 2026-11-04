@@ -50,6 +50,30 @@ function doPost(e) {
   }
 }
 
+function setupDatabase() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = [
+    { name: 'المشاريع', headers: ['ID', 'كود المشروع', 'اسم المشروع', 'العميل', 'الموقع', 'القيمة الاجمالية', 'المستخلص المحصل', 'مدير المشروع', 'تاريخ البدء', 'تاريخ النهاية', 'حالة المشروع'] },
+    { name: 'المصروفات', headers: ['ID', 'كود المشروع', 'بند المصروف', 'المبلغ', 'التاريخ', 'ملاحظات', 'رابط الفاتورة'] },
+    { name: 'الموظفين', headers: ['ID', 'رقم الموظف', 'اسم الموظف', 'رقم الهوية', 'تاريخ الميلاد', 'فصيلة الدم', 'تاريخ انتهاء الإقامة', 'المهنة', 'الراتب الأساسي'] },
+    { name: 'مسير الرواتب', headers: ['ID', 'رقم الموظف', 'اسم الموظف', 'الشهر/السنة', 'الراتب الأساسي', 'الخصومات', 'الإضافي', 'صافي الراتب', 'حالة الصرف', 'تاريخ الصرف'] },
+    { name: 'العقود والخطابات', headers: ['ID', 'اسم الخطاب', 'الجهة', 'تاريخ الخطاب', 'رابط الملف'] },
+    { name: 'وثائق الشركة', headers: ['ID', 'اسم الوثيقة', 'تاريخ الانتهاء', 'رابط المستند'] },
+    { name: 'المستخدمين', headers: ['ID', 'الاسم', 'البريد الإلكتروني', 'كلمة المرور', 'الدور'] }
+  ];
+
+  sheets.forEach(sheetInfo => {
+    let sheet = ss.getSheetByName(sheetInfo.name);
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetInfo.name);
+      sheet.appendRow(sheetInfo.headers);
+      sheet.getRange(1, 1, 1, sheetInfo.headers.length).setFontWeight('bold').setBackground('#0f172a').setFontColor('#ffffff');
+    }
+  });
+
+  return { status: 'success', message: 'تمت تهيئة الجداول بنجاح' };
+}
+
 function getAllAppData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = ss.getSheets();
@@ -61,88 +85,6 @@ function getAllAppData() {
   });
   
   return result;
-}
-
-function getData(sheetName) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return [];
-  
-  const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return []; 
-  
-  const headers = data[0].map(h => h ? h.toString().trim() : '');
-  const rows = data.slice(1).filter(row => row.some(cell => cell !== "" && cell !== null));
-  
-  return rows.map(row => {
-    let obj = {};
-    headers.forEach((h, index) => {
-      if (!h) return;
-      let val = row[index];
-      if (val instanceof Date) {
-        val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-      }
-      obj[h] = (val !== undefined && val !== null) ? val : "";
-    });
-    return obj;
-  });
-}
-
-function saveRecord(sheetName, record) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(sheetName);
-  if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
-  }
-  
-  const data = sheet.getDataRange().getValues();
-  let headers = data.length > 0 ? data[0].map(h => h ? h.toString().trim() : '') : [];
-
-  if (headers.length === 0) {
-    headers = Object.keys(record);
-    sheet.appendRow(headers);
-  }
-
-  if (record['ID']) {
-    const idIndex = headers.indexOf('ID');
-    if (idIndex !== -1) {
-      for (let i = 1; i < data.length; i++) {
-        if (String(data[i][idIndex]) === String(record['ID'])) {
-          headers.forEach((h, colIndex) => {
-            if (record[h] !== undefined) {
-              sheet.getRange(i + 1, colIndex + 1).setValue(record[h]);
-            }
-          });
-          return { success: true, message: 'تم تحديث البيانات بنجاح' };
-        }
-      }
-    }
-  }
-
-  record['ID'] = 'ID-' + new Date().getTime();
-  const rowToAppend = headers.map(h => record[h] !== undefined ? record[h] : '');
-  sheet.appendRow(rowToAppend);
-  return { success: true, message: 'تم الحفظ بنجاح' };
-}
-
-function deleteRecord(sheetName, id) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return { success: false, message: 'الجدول غير موجود' };
-  
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0].map(h => h ? h.toString().trim() : '');
-  const idIndex = headers.indexOf('ID');
-
-  if (idIndex === -1) return { success: false, message: 'عمود ID غير موجود' };
-
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][idIndex]) === String(id)) {
-      sheet.deleteRow(i + 1);
-      return { success: true, message: 'تم الحذف بنجاح' };
-    }
-  }
-  return { success: false, message: 'لم يتم العثور على السجل' };
 }
 
 function uploadFileToDrive(fileData) {
@@ -194,6 +136,84 @@ function checkLogin(email, password) {
     }
   }
   return { success: false, message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" };
+}
+
+function getData(sheetName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return [];
+  
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return []; 
+  
+  const headers = data[0].map(h => h ? h.toString().trim() : '');
+  const rows = data.slice(1).filter(row => row.some(cell => cell !== "" && cell !== null));
+  
+  return rows.map(row => {
+    let obj = {};
+    headers.forEach((h, index) => {
+      if (!h) return;
+      let val = row[index];
+      if (val instanceof Date) {
+        val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+      }
+      obj[h] = (val !== undefined && val !== null) ? val : "";
+    });
+    return obj;
+  });
+}
+
+function saveRecord(sheetName, record) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(sheetName);
+  if(!sheet) {
+    setupDatabase();
+    sheet = ss.getSheetByName(sheetName);
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => h ? h.toString().trim() : '');
+
+  if (record['ID']) {
+    const idIndex = headers.indexOf('ID');
+    if (idIndex !== -1) {
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][idIndex]) === String(record['ID'])) {
+          headers.forEach((h, colIndex) => {
+            if (record[h] !== undefined) {
+              sheet.getRange(i + 1, colIndex + 1).setValue(record[h]);
+            }
+          });
+          return { success: true, message: 'تم تحديث البيانات بنجاح' };
+        }
+      }
+    }
+  }
+
+  record['ID'] = 'ID-' + new Date().getTime();
+  const rowToAppend = headers.map(h => record[h] !== undefined ? record[h] : '');
+  sheet.appendRow(rowToAppend);
+  return { success: true, message: 'تم الحفظ بنجاح' };
+}
+
+function deleteRecord(sheetName, id) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+  if(!sheet) return { success: false, message: 'الجدول غير موجود' };
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => h ? h.toString().trim() : '');
+  const idIndex = headers.indexOf('ID');
+
+  if (idIndex === -1) return { success: false, message: 'عمود ID غير موجود' };
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][idIndex]) === String(id)) {
+      sheet.deleteRow(i + 1);
+      return { success: true, message: 'تم الحذف بنجاح' };
+    }
+  }
+  return { success: false, message: 'لم يتم العثور على السجل' };
 }
 
 function getDashboardData() {
