@@ -4,14 +4,53 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>نظام إدارة مؤسسة حسن خالد حسن فران للمقاولات</title>
+  
+  <!-- تضمين PWA Manifest ديناميكياً لتفعيل زر التثبيت -->
+  <link rel="manifest" id="manifestPlaceholder">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="إدارة المشاريع">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+  
   <style>
     body { font-family: 'Cairo', sans-serif; }
     .tab-active { background-color: #2563eb; color: #ffffff; }
   </style>
+
+  <script>
+    // حقن Manifest في الرأس تلقائياً
+    const manifestData = {
+      "name": "تطبيق إدارة المشاريع والموظفين",
+      "short_name": "التطبيق",
+      "start_url": "./",
+      "display": "standalone",
+      "background_color": "#ffffff",
+      "theme_color": "#2563eb",
+      "icons": [
+        {
+          "src": "https://cdn-icons-png.flaticon.com/512/1041/1041916.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        },
+        {
+          "src": "https://cdn-icons-png.flaticon.com/512/1041/1041916.png",
+          "sizes": "512x512",
+          "type": "image/png"
+        }
+      ]
+    };
+    const stringManifest = JSON.stringify(manifestData);
+    const blobManifest = new Blob([stringManifest], {type: 'application/json'});
+    const manifestURL = URL.createObjectURL(blobManifest);
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('manifestPlaceholder').setAttribute('href', manifestURL);
+    });
+  </script>
 </head>
 <body class="bg-slate-100 text-slate-800">
 
@@ -47,6 +86,11 @@
         <div class="p-5 border-b border-slate-800 text-center">
           <h2 class="font-extrabold text-blue-400 text-lg">م. حسن فران للمقاولات</h2>
           <span id="userRoleBadge" class="inline-block mt-2 bg-blue-900/80 text-blue-200 text-xs px-3 py-1 rounded-full font-bold">مدير النظام</span>
+          
+          <!-- زر التثبيت التفاعلي (يظهر فور جاهزية المتصفح) -->
+          <button id="pwaInstallBtn" onclick="installPWA()" class="hidden w-full mt-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition">
+            <i class="fa-solid fa-download"></i> تثبيت التطبيق على الجهاز
+          </button>
         </div>
         <nav class="p-4 space-y-1 text-sm font-semibold">
           <button id="nav-dashboard" onclick="switchTab('dashboard')" class="w-full text-right px-4 py-3 rounded-xl hover:bg-slate-800 flex items-center gap-3 tab-btn tab-active">
@@ -657,9 +701,53 @@
     let allUsers = [];
     let chartInstance = null;
     let payrollData = {};
+    let deferredPrompt = null;
 
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-xVuOb09mAWQanMzza9XesdWlK8eJgT8ZuHxValLm-qqHnfhhVA/exec";
 
+    // --- PWA Service Worker & Install Event Handler ---
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+        const CACHE_NAME = 'pwa-cache-v1';
+        self.addEventListener('install', (event) => {
+          self.skipWaiting();
+        });
+        self.addEventListener('activate', (event) => {
+          event.waitUntil(clients.claim());
+        });
+        self.addEventListener('fetch', (event) => {
+          event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+        });
+      `;
+      const blob = new Blob([swCode], { type: 'text/javascript' });
+      const swUrl = URL.createObjectURL(blob);
+
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register(swUrl)
+          .then(() => console.log('PWA Service Worker Ready'))
+          .catch(err => console.log('Service Worker Init:', err));
+      });
+    }
+
+    // التقاط حدث جاهزية التثبيت واستدعاء الزر
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const btn = document.getElementById('pwaInstallBtn');
+      if(btn) btn.classList.remove('hidden');
+    });
+
+    async function installPWA() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        document.getElementById('pwaInstallBtn').classList.add('hidden');
+      }
+      deferredPrompt = null;
+    }
+
+    // --- Backend API ---
     async function callBackend(functionName, ...args) {
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         return new Promise((resolve, reject) => {
