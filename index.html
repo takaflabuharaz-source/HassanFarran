@@ -23,7 +23,7 @@
           <i class="fa-solid fa-building-user"></i>
         </div>
         <h1 class="text-xl font-black text-slate-800">مؤسسة حسن خالد حسن فران</h1>
-        <p class="text-sm text-slate-500 font-bold mt-1">لالمقاولات العامة</p>
+        <p class="text-sm text-slate-500 font-bold mt-1">للمقاولات العامة</p>
       </div>
       <form onsubmit="handleLoginProcess(event)" class="space-y-4">
         <div>
@@ -79,7 +79,7 @@
       </div>
     </aside>
 
-    <!-- المحتوى الرئيسي -->
+    <!-- المحتوى -->
     <main class="flex-1 p-6 md:p-8 overflow-y-auto">
       
       <!-- 1. لوحة التحكم -->
@@ -432,7 +432,7 @@
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-    // --- طباعة رسمية مطابقة للكليشيه (ورق جديد.docx) ---
+    // --- طباعة رسمية مطابقة لكليشيه الورق الرسمي (ورق جديد.docx) ---
     function printOfficialDocument(docTitle, docNumber, bodyHtml) {
       const currentDate = new Date().toLocaleDateString('ar-SA') + ' م (' + new Date().toISOString().slice(0, 10) + ')';
       const printWin = window.open('', '', 'width=950,height=800');
