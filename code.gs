@@ -1,15 +1,21 @@
+/**
+ * نظام إدارة مؤسسة حسن خالد حسن فران للمقاولات العامة
+ * Backend Controller
+ */
+
 function doGet(e) {
   if (e && e.parameter && e.parameter.action === 'getDashboard') {
-    const data = getDashboardData();
-    return ContentService
-      .createTextOutput(JSON.stringify(data))
+    return ContentService.createTextOutput(JSON.stringify(getDashboardData()))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
   if (e && e.parameter && e.parameter.action === 'getAllData') {
-    const data = getAllAppData();
-    return ContentService
-      .createTextOutput(JSON.stringify(data))
+    return ContentService.createTextOutput(JSON.stringify(getAllAppData()))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (e && e.parameter && e.parameter.action === 'checkLogin') {
+    return ContentService.createTextOutput(JSON.stringify(checkLogin(e.parameter.email, e.parameter.password)))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
@@ -23,12 +29,12 @@ function doGet(e) {
 function doPost(e) {
   try {
     var contents = JSON.parse(e.postData.contents);
-    
+
     if (contents.action === 'saveRecord') {
       var res = saveRecord(contents.sheetName, contents.record);
       return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
     }
-    
+
     if (contents.action === 'deleteRecord') {
       var res = deleteRecord(contents.sheetName, contents.id);
       return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
@@ -39,13 +45,11 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
     }
 
-    return ContentService
-      .createTextOutput(JSON.stringify({ "result": "success", "data": contents }))
+    return ContentService.createTextOutput(JSON.stringify({ "result": "success", "data": contents }))
       .setMimeType(ContentService.MimeType.JSON);
-      
+
   } catch (error) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ "result": "error", "message": error.toString() }))
+    return ContentService.createTextOutput(JSON.stringify({ "result": "error", "message": error.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
@@ -75,61 +79,40 @@ function setupDatabase() {
   return { status: 'success', message: 'تمت تهيئة الجداول بنجاح' };
 }
 
-// دالة جلب كافة بيانات القاعدة
+// جلب كافة بيانات التطبيق
 function getAllAppData() {
-  const sheetNames = ['المشاريع', 'المصروفات', 'الموظفين', 'العقود والخطابات', 'وثائق الشركة', 'المستخدمين'];
+  const sheetNames = ['المشاريع', 'المصروفات', 'الموظفين', 'مسير الرواتب', 'العقود والخطابات', 'وثائق الشركة', 'المستخدمين'];
   const result = {};
-  
+
   sheetNames.forEach(name => {
     result[name] = getData(name);
   });
-  
+
   return result;
 }
 
-// دالة رفع الملفات إلى Google Drive وتحويل الرابط للمعاينة المباشرة
-function uploadFileToDrive(fileData) {
-  try {
-    const folderName = "فواتير ومستندات المؤسسة";
-    let folders = DriveApp.getFoldersByName(folderName);
-    let folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
-
-    const contentType = fileData.mimeType || 'application/octet-stream';
-    var base64String = fileData.data;
-    if (base64String.indexOf(',') !== -1) {
-      base64String = base64String.split(',')[1];
-    }
-    
-    const bytes = Utilities.base64Decode(base64String);
-    const blob = Utilities.newBlob(bytes, contentType, fileData.fileName);
-    
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    // تحويل الرابط لرابط معاينة مباشر يدعم العرض داخل العناوين و iframe
-    var previewUrl = "https://drive.google.com/file/d/" + file.getId() + "/preview";
-
-    return { success: true, url: previewUrl, rawUrl: file.getUrl() };
-  } catch (error) {
-    return { success: false, message: error.toString() };
-  }
-}
-
+// دالة تسجيل الدخول المرنة
 function checkLogin(email, password) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("المستخدمين");
-  if (!sheet) return { success: true, user: { email: email, role: 'مدير النظام' } }; 
   
+  // السماح بالدخول الافتراضي لمدير النظام
+  if (String(email).trim().toLowerCase() === 'admin@farran.com' && String(password).trim() === '123456') {
+    return { success: true, user: { name: 'م. حسن فران', email: email, role: 'مدير النظام' } };
+  }
+
+  if (!sheet) return { success: false, message: "جدول المستخدمين غير موجود" };
+
   var data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return { success: true, user: { email: email, role: 'مدير النظام' } };
-  
+  if (data.length <= 1) return { success: false, message: "لا يوجد مستخدمين مسجلين" };
+
   var headers = data[0];
   var emailIdx = headers.indexOf("البريد الإلكتروني");
   var passIdx = headers.indexOf("كلمة المرور");
   var roleIdx = headers.indexOf("الدور");
   var nameIdx = headers.indexOf("الاسم");
-  
+
   for (var i = 1; i < data.length; i++) {
-    if (String(data[i][emailIdx]).trim() === String(email).trim() && 
+    if (String(data[i][emailIdx]).trim().toLowerCase() === String(email).trim().toLowerCase() &&
         String(data[i][passIdx]).trim() === String(password).trim()) {
       return {
         success: true,
@@ -140,17 +123,18 @@ function checkLogin(email, password) {
   return { success: false, message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" };
 }
 
+// جلب بيانات شيت محدد
 function getData(sheetName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) return [];
-  
+
   const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return []; 
-  
+  if (data.length <= 1) return [];
+
   const headers = data[0].map(h => h ? h.toString().trim() : '');
   const rows = data.slice(1).filter(row => row.some(cell => cell !== "" && cell !== null));
-  
+
   return rows.map(row => {
     let obj = {};
     headers.forEach((h, index) => {
@@ -165,14 +149,15 @@ function getData(sheetName) {
   });
 }
 
+// حفظ أو تحديث سجل
 function saveRecord(sheetName, record) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(sheetName);
-  if(!sheet) {
+  if (!sheet) {
     setupDatabase();
     sheet = ss.getSheetByName(sheetName);
   }
-  
+
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
@@ -196,11 +181,12 @@ function saveRecord(sheetName, record) {
   return { success: true, message: 'تم الحفظ بنجاح' };
 }
 
+// حذف سجل
 function deleteRecord(sheetName, id) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
-  if(!sheet) return { success: false, message: 'الجدول غير موجود' };
-  
+  if (!sheet) return { success: false, message: 'الجدول غير موجود' };
+
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const idIndex = headers.indexOf('ID');
@@ -214,6 +200,34 @@ function deleteRecord(sheetName, id) {
   return { success: false, message: 'لم يتم العثور على السجل' };
 }
 
+// رفع الملفات لـ Google Drive
+function uploadFileToDrive(fileData) {
+  try {
+    const folderName = "فواتير ومستندات المؤسسة";
+    let folders = DriveApp.getFoldersByName(folderName);
+    let folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+
+    const contentType = fileData.mimeType || 'application/octet-stream';
+    var base64String = fileData.data;
+    if (base64String.indexOf(',') !== -1) {
+      base64String = base64String.split(',')[1];
+    }
+
+    const bytes = Utilities.base64Decode(base64String);
+    const blob = Utilities.newBlob(bytes, contentType, fileData.fileName);
+
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    var previewUrl = "https://drive.google.com/file/d/" + file.getId() + "/preview";
+
+    return { success: true, url: previewUrl, rawUrl: file.getUrl() };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+// بيانات لوحة التحكم
 function getDashboardData() {
   const projects = getData('المشاريع');
   const expenses = getData('المصروفات');
