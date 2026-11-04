@@ -146,7 +146,7 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
             <h2 class="text-2xl font-black">قائمة المصروفات</h2>
-            <p class="text-xs text-slate-500 font-bold mt-1">استعراض المصروفات، وتصدير الجدول صافياً للإكسل للتعديل الحسابي المباشر</p>
+            <p class="text-xs text-slate-500 font-bold mt-1">استعراض المصروفات، فلترتها حسب الفترة، وتصديرها إلى إكسل</p>
           </div>
           <button onclick="openNewExpenseModal()" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-blue-700 flex items-center gap-2 self-start md:self-auto">
             <i class="fa-solid fa-plus"></i> إدخال مصروف جديد
@@ -170,7 +170,7 @@
             <div class="flex items-center gap-3">
               <span id="filtered_total_display" class="text-xs font-black bg-rose-50 text-rose-600 px-3 py-2 rounded-lg">إجمالي الفترة: 0 ر.س</span>
               <button onclick="exportExpensesToExcel()" class="bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-emerald-700 flex items-center gap-2 shadow-md">
-                <i class="fa-solid fa-file-excel"></i> تصدير إلى Excel (جدول فقط)
+                <i class="fa-solid fa-file-excel"></i> تصدير إلى Excel
               </button>
             </div>
           </div>
@@ -194,7 +194,7 @@
         </div>
       </section>
 
-      <!-- 4. الموظفين والرواتب -->
+      <!-- 4. الموظفين والرواتب (تم إضافة زر المسيرات والرواتب) -->
       <section id="employeesView" class="hidden">
         <div class="flex justify-between items-center mb-6">
           <div>
@@ -386,11 +386,50 @@
     let chartInstance = null;
     let payrollData = {};
 
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-xVuOb09mAWQanMzza9XesdWlK8eJgT8ZuHxValLm-qqHnfhhVA/exec";
+
     async function callBackend(functionName, ...args) {
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         return new Promise((resolve, reject) => {
-          google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[functionName](...args);
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)[functionName](...args);
         });
+      } else {
+        let url = SCRIPT_URL;
+        let options = {};
+
+        if (functionName === 'getDashboardData') {
+          url += '?action=getDashboard';
+          options = { method: 'GET' };
+        } else if (functionName === 'getAllAppData') {
+          url += '?action=getAllData';
+          options = { method: 'GET' };
+        } else if (functionName === 'getData') {
+          url += '?action=getData&sheetName=' + encodeURIComponent(args[0]);
+          options = { method: 'GET' };
+        } else if (functionName === 'checkLogin') {
+          url += '?action=checkLogin&email=' + encodeURIComponent(args[0]) + '&password=' + encodeURIComponent(args[1]);
+          options = { method: 'GET' };
+        } else if (functionName === 'saveRecord') {
+          options = {
+            method: 'POST',
+            body: JSON.stringify({ action: 'saveRecord', sheetName: args[0], record: args[1] })
+          };
+        } else if (functionName === 'deleteRecord') {
+          options = {
+            method: 'POST',
+            body: JSON.stringify({ action: 'deleteRecord', sheetName: args[0], id: args[1] })
+          };
+        } else if (functionName === 'uploadFileToDrive') {
+          options = {
+            method: 'POST',
+            body: JSON.stringify({ action: 'uploadFile', fileData: args[0] })
+          };
+        }
+
+        const res = await fetch(url, options);
+        return await res.json();
       }
     }
 
@@ -406,33 +445,50 @@
           allOrgDocs = data['وثائق الشركة'] || [];
           allUsers = data['المستخدمين'] || [];
         }
-      } catch (err) { console.error("خطأ في تحميل البيانات:", err); }
+      } catch (err) {
+        console.error("خطأ في جلب البيانات:", err);
+      }
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
-      currentUser = { email: 'admin@farran.com', role: 'مدير النظام' };
-      document.getElementById('loginScreen').classList.add('hidden');
-      document.getElementById('appScreen').classList.remove('hidden');
-      await fetchAllData();
-      switchTab('dashboard');
+      const savedUser = localStorage.getItem('app_user');
+      const savedTab = localStorage.getItem('app_tab') || 'dashboard';
+
+      if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('appScreen').classList.remove('hidden');
+        document.getElementById('userRoleBadge').innerText = currentUser.role || 'مدير النظام';
+        
+        await fetchAllData();
+        switchTab(savedTab);
+      }
     });
 
     function switchTab(tabId) {
+      localStorage.setItem('app_tab', tabId);
       document.querySelectorAll('main > section').forEach(el => el.classList.add('hidden'));
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active'));
-      document.getElementById(tabId + 'View')?.classList.remove('hidden');
-      document.getElementById('nav-' + tabId)?.classList.add('tab-active');
+      
+      const target = document.getElementById(tabId + 'View');
+      const activeNav = document.getElementById('nav-' + tabId);
+      
+      if (target) target.classList.remove('hidden');
+      if (activeNav) activeNav.classList.add('tab-active');
 
       if (tabId === 'dashboard') renderDashboard();
       if (tabId === 'projects') renderProjectCards();
       if (tabId === 'expenses') renderExpensesTable();
       if (tabId === 'employees') renderEmployeesTable();
+      if (tabId === 'letters') renderLettersTable();
+      if (tabId === 'orgDocs') renderOrgDocsCards();
+      if (tabId === 'users') renderUsersTable();
     }
 
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-    // --- طباعة رسمية مطابقة لكليشيه الورق الرسمي (ورق جديد.docx) ---
+    // --- المحرك الموحد للطباعة الرسمية ---
     function printOfficialDocument(docTitle, docNumber, bodyHtml) {
       const currentDate = new Date().toLocaleDateString('ar-SA') + ' م (' + new Date().toISOString().slice(0, 10) + ')';
       const printWin = window.open('', '', 'width=950,height=800');
@@ -462,8 +518,8 @@
                 <p style="margin:3px 0 0; font-size:12px; color:#475569; font-weight:bold;">المملكة العربية السعودية - السجل التجاري الرسمي</p>
               </div>
               <div class="header-info">
-                <div>DATE: <span style="color:#0f172a;">${currentDate}</span></div>
-                <div>NO.: <span style="color:#2563eb;">${docNumber || 'REF-' + Math.floor(1000 + Math.random() * 9000)}</span></div>
+                <div>تاريخ الطباعة: <span style="color:#0f172a;">${currentDate}</span></div>
+                <div>رقم المستند/السند: <span style="color:#2563eb;">${docNumber || 'REF-' + Math.floor(1000 + Math.random() * 9000)}</span></div>
               </div>
             </div>
 
@@ -486,7 +542,7 @@
       setTimeout(() => { printWin.print(); }, 500);
     }
 
-    // --- 1. إصلاح زر الطباعة في إدارة المشاريع ---
+    // --- 1. إصلاح تفعيل زر طباعة تقرير المشروع ---
     function printProjectReport(p, pExpenses, pRemaining, netProfit) {
       const body = `
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; font-size:13px; margin-bottom:25px;">
@@ -523,38 +579,7 @@
       printOfficialDocument(`تقرير مالية مشروع: ${p['اسم المشروع']}`, p['كود المشروع'], body);
     }
 
-    // --- 2. تصدير جدول المصروفات صافياً للتعديل الحسابي المباشر ---
-    function exportExpensesToExcel() {
-      if (!filteredExpenses || filteredExpenses.length === 0) {
-        alert("لا يوجد بيانات مصروفات مصفاة لتصديرها.");
-        return;
-      }
-
-      let csvContent = "\uFEFF";
-      csvContent += "كود المشروع,بند المصروف,المبلغ (ر.س),التاريخ,ملاحظات\n";
-
-      filteredExpenses.forEach(e => {
-        const row = [
-          `"${e['كود المشروع'] || ''}"`,
-          `"${e['بند المصروف'] || ''}"`,
-          `"${e['المبلغ'] || '0'}"`,
-          `"${e['التاريخ'] || ''}"`,
-          `"${(e['ملاحظات'] || '').replace(/"/g, '""')}"`
-        ];
-        csvContent += row.join(",") + "\n";
-      });
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", `جدول_المصروفات_${new Date().toISOString().slice(0, 10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    // --- 3. نظام الرواتب، السندات والمسيرات ---
+    // --- 2. إدارة وتوليد الرواتب والمسيرات والطباعة والتوقيعات ---
     function openPayrollModal() {
       allEmployees.forEach(emp => {
         const id = emp['ID'];
@@ -731,10 +756,129 @@
       printOfficialDocument(`كشف مسير رواتب الموظفين الشامل`, 'PAYROLL-ALL-' + new Date().toISOString().slice(0,7), body);
     }
 
-    function renderDashboard() {}
-    function renderProjectCards() {}
+    // باقي الدوال المحفوظة كالسابق
+    function renderDashboard() {
+      let totalContractValue = 0, totalCollected = 0, totalExpenses = 0;
+      allProjects.forEach(p => {
+        totalContractValue += parseFloat(p['القيمة الاجمالية']) || 0;
+        totalCollected += parseFloat(p['المستخلص المحصل']) || 0;
+      });
+      allExpenses.forEach(e => { totalExpenses += parseFloat(e['المبلغ']) || 0; });
+      const totalRemaining = totalContractValue - totalCollected;
+
+      document.getElementById('statTotalContract').innerText = totalContractValue.toLocaleString() + ' ر.س';
+      document.getElementById('statCollected').innerText = totalCollected.toLocaleString() + ' ر.س';
+      document.getElementById('statRemaining').innerText = totalRemaining.toLocaleString() + ' ر.س';
+      document.getElementById('statExpenses').innerText = totalExpenses.toLocaleString() + ' ر.س';
+
+      renderChart({ totalContractValue, totalCollected, totalRemaining, totalExpenses });
+    }
+
+    function renderChart(stats) {
+      const ctx = document.getElementById('financialChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['إجمالي العقود', 'المحتسب من المستخلصات', 'المتبقي غير المحصل', 'المصروفات الشاملة'],
+          datasets: [{ data: [stats.totalContractValue, stats.totalCollected, stats.totalRemaining, stats.totalExpenses], backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#f43f5e'], borderRadius: 8 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+    }
+
+    function renderProjectCards() {
+      const container = document.getElementById('projectsCardsContainer');
+      container.innerHTML = '';
+      if (allProjects.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 font-bold">لا يوجد مشاريع مضافة حالياً.</div>`;
+        return;
+      }
+      allProjects.forEach(p => {
+        const pExpenses = allExpenses.filter(e => e['كود المشروع'] === p['كود المشروع']).reduce((sum, e) => sum + (parseFloat(e['المبلغ']) || 0), 0);
+        const pValue = parseFloat(p['القيمة الاجمالية']) || 0;
+        const pCollected = parseFloat(p['المستخلص المحصل']) || 0;
+        const pRemaining = pValue - pCollected;
+
+        container.innerHTML += `
+          <div onclick="openProjectDetails('${p['ID']}')" class="bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition cursor-pointer flex flex-col justify-between border-t-4 border-t-blue-600">
+            <div>
+              <div class="flex justify-between items-start mb-3">
+                <div>
+                  <span class="text-xs font-bold text-slate-400 block">${p['كود المشروع']}</span>
+                  <h3 class="font-black text-lg text-slate-800 mt-0.5">${p['اسم المشروع']}</h3>
+                </div>
+                <span class="text-xs px-2.5 py-1 rounded-full font-bold bg-blue-100 text-blue-800">${p['حالة المشروع'] || 'تحت التنفيذ'}</span>
+              </div>
+              <div class="space-y-1 text-xs text-slate-600 mb-4 font-semibold">
+                <p><i class="fa-solid fa-user text-slate-400 w-4"></i> <strong>العميل:</strong> ${p['العميل'] || '-'}</p>
+                <p><i class="fa-solid fa-location-dot text-slate-400 w-4"></i> <strong>الموقع:</strong> ${p['الموقع'] || '-'}</p>
+              </div>
+            </div>
+            <div class="pt-3 border-t grid grid-cols-2 gap-2 text-xs text-center bg-slate-50 p-2.5 rounded-xl">
+              <div><span class="text-slate-400 block font-bold">القيمة الإجمالية</span><span class="font-black text-slate-800">${pValue.toLocaleString()} ر.س</span></div>
+              <div><span class="text-slate-400 block font-bold">المستخلص المحصل</span><span class="font-black text-emerald-600">${pCollected.toLocaleString()} ر.س</span></div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function openProjectDetails(id) {
+      const p = allProjects.find(item => String(item['ID']) === String(id));
+      if (!p) return;
+      const pExpenses = allExpenses.filter(e => e['كود المشروع'] === p['كود المشروع']).reduce((sum, e) => sum + (parseFloat(e['المبلغ']) || 0), 0);
+      const pValue = parseFloat(p['القيمة الاجمالية']) || 0;
+      const pCollected = parseFloat(p['المستخلص المحصل']) || 0;
+      const pRemaining = pValue - pCollected;
+      const netProfit = pValue - pExpenses;
+
+      document.getElementById('pd_code').innerText = p['كود المشروع'];
+      document.getElementById('pd_title').innerText = p['اسم المشروع'];
+      document.getElementById('pd_content').innerHTML = `
+        <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border text-xs">
+          <div><span class="text-slate-400 font-bold block">العميل</span><span class="font-extrabold text-slate-800 text-sm">${p['العميل'] || '-'}</span></div>
+          <div><span class="text-slate-400 font-bold block">حالة المشروع</span><span class="font-extrabold text-blue-600 text-sm">${p['حالة المشروع'] || '-'}</span></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3 text-xs mt-3">
+          <div class="bg-blue-50/50 p-3 rounded-xl border border-blue-100"><span class="text-slate-500 font-bold block">القيمة الإجمالية</span><span class="text-base font-black text-blue-700">${pValue.toLocaleString()} ر.س</span></div>
+          <div class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100"><span class="text-emerald-600 font-bold block">المستخلص المستلم</span><span class="text-base font-black text-emerald-700">${pCollected.toLocaleString()} ر.س</span></div>
+        </div>
+      `;
+      document.getElementById('pd_btn_edit').onclick = () => editProject(p['ID']);
+      document.getElementById('pd_btn_delete').onclick = () => deleteProject(p['ID']);
+      document.getElementById('pd_btn_print').onclick = () => printProjectReport(p, pExpenses, pRemaining, netProfit);
+
+      openModal('projectDetailsModal');
+    }
+
     function renderExpensesTable() {}
-    function renderEmployeesTable() {}
+    function renderEmployeesTable() {
+      const tbody = document.getElementById('employeesTableBody');
+      tbody.innerHTML = '';
+      if (allEmployees.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400 font-bold">لا يوجد موظفين مضافين حالياً</td></tr>`;
+        return;
+      }
+      allEmployees.forEach(emp => {
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 font-semibold">
+            <td class="p-4 font-bold text-blue-600">${emp['رقم الموظف']}</td>
+            <td class="p-4">${emp['اسم الموظف']}</td>
+            <td class="p-4">${emp['رقم الهوية']}</td>
+            <td class="p-4">${emp['المهنة']}</td>
+            <td class="p-4 font-bold text-slate-800">${(parseFloat(emp['الراتب الأساسي'])||0).toLocaleString()} ر.س</td>
+            <td class="p-4">${emp['تاريخ انتهاء الإقامة'] || '-'}</td>
+            <td class="p-4 text-center">
+              <button onclick="editEmployee('${emp['ID']}')" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+    function renderLettersTable() {}
+    function renderOrgDocsCards() {}
+    function renderUsersTable() {}
   </script>
 </body>
 </html>
