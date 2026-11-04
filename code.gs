@@ -50,7 +50,7 @@ function doPost(e) {
   }
 }
 
-// دالة جلب البيانات بشكل ديناميكي وآمن يقرأ كافة الشيتات
+// دالة قراءة كافة الجداول في الشيت ديناميكياً بدون فقدان أي بيانات
 function getAllAppData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = ss.getSheets();
@@ -92,12 +92,17 @@ function getData(sheetName) {
 function saveRecord(sheetName, record) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(sheetName);
-  if(!sheet) {
+  if (!sheet) {
     sheet = ss.insertSheet(sheetName);
   }
   
   const data = sheet.getDataRange().getValues();
-  const headers = data.length > 0 ? data[0].map(h => h ? h.toString().trim() : '') : [];
+  let headers = data.length > 0 ? data[0].map(h => h ? h.toString().trim() : '') : [];
+
+  if (headers.length === 0) {
+    headers = Object.keys(record);
+    sheet.appendRow(headers);
+  }
 
   if (record['ID']) {
     const idIndex = headers.indexOf('ID');
@@ -124,7 +129,7 @@ function saveRecord(sheetName, record) {
 function deleteRecord(sheetName, id) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
-  if(!sheet) return { success: false, message: 'الجدول غير موجود' };
+  if (!sheet) return { success: false, message: 'الجدول غير موجود' };
   
   const data = sheet.getDataRange().getValues();
   const headers = data[0].map(h => h ? h.toString().trim() : '');
