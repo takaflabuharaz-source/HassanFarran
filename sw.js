@@ -1,15 +1,14 @@
-const CACHE_NAME = 'pwa-cache-v1';
-const assetsToCache = [
-  '/',
-  '/index.html',
-  // أضف هنا ملفات CSS أو JS الأساسية لديك
-];
+const CACHE_NAME = 'pwa-cache-v2';
 
-// مرحلة التثبيت والتخزين المؤقت
+// مرحلة التثبيت والتخزين الآمن
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(assetsToCache);
+      // استخدام addAll بحذر لتفادي توقف الخدمة إذا لم يجد ملفاً معيناً
+      return cache.addAll(['./', './index.html', './manifest.json']).catch(err => {
+        console.log('Cache Add Failed, bypassing initial cache error:', err);
+      });
     })
   );
 });
@@ -25,15 +24,24 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
-// التعامل مع طلبات الشبكة (مهم جداً لتفعيل الـ PWA)
+// التعامل مع طلبات الشبكة
 self.addEventListener('fetch', (event) => {
+  // تجنب تخزين طلبات البرمجة الخارجية مثل Google Apps Script بروابط POST
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(event.request).catch(() => {
+        // العودة لصفحة index.html في حال انقطاع الاتصال
+        return caches.match('./index.html');
+      });
     })
   );
 });
