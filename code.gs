@@ -1,14 +1,9 @@
 /**
  * نظام إدارة مؤسسة حسن خالد حسن فران للمقاولات العامة
- * Backend Controller
+ * Backend Controller - آمن ويحفظ البيانات من المسح
  */
 
 function doGet(e) {
-  if (e && e.parameter && e.parameter.action === 'getDashboard') {
-    return ContentService.createTextOutput(JSON.stringify(getDashboardData()))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
   if (e && e.parameter && e.parameter.action === 'getAllData') {
     return ContentService.createTextOutput(JSON.stringify(getAllAppData()))
       .setMimeType(ContentService.MimeType.JSON);
@@ -54,52 +49,49 @@ function doPost(e) {
   }
 }
 
-// تهيئة الجداول وتحديث الأعمدة
-function setupDatabase() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = [
-    { name: 'المشاريع', headers: ['ID', 'كود المشروع', 'اسم المشروع', 'العميل', 'الموقع', 'القيمة الاجمالية', 'المستخلص المحصل', 'مدير المشروع', 'تاريخ البدء', 'تاريخ النهاية', 'حالة المشروع'] },
-    { name: 'المصروفات', headers: ['ID', 'كود المشروع', 'بند المصروف', 'المبلغ', 'التاريخ', 'ملاحظات', 'رابط الفاتورة'] },
-    { name: 'الموظفين', headers: ['ID', 'رقم الموظف', 'اسم الموظف', 'رقم الهوية', 'تاريخ الميلاد', 'فصيلة الدم', 'تاريخ انتهاء الإقامة', 'المهنة', 'الراتب الأساسي'] },
-    { name: 'مسير الرواتب', headers: ['ID', 'رقم الموظف', 'اسم الموظف', 'الشهر/السنة', 'الراتب الأساسي', 'الخصومات', 'الإضافي', 'صافي الراتب', 'حالة الصرف', 'تاريخ الصرف'] },
-    { name: 'العقود والخطابات', headers: ['ID', 'اسم الخطاب', 'الجهة', 'تاريخ الخطاب', 'رابط الملف'] },
-    { name: 'وثائق الشركة', headers: ['ID', 'اسم الوثيقة', 'تاريخ الانتهاء', 'رابط المستند'] },
-    { name: 'المستخدمين', headers: ['ID', 'الاسم', 'البريد الإلكتروني', 'كلمة المرور', 'الدور'] }
-  ];
-
-  sheets.forEach(sheetInfo => {
-    let sheet = ss.getSheetByName(sheetInfo.name);
-    if (!sheet) {
-      sheet = ss.insertSheet(sheetInfo.name);
-      sheet.appendRow(sheetInfo.headers);
-      sheet.getRange(1, 1, 1, sheetInfo.headers.length).setFontWeight('bold').setBackground('#0f172a').setFontColor('#ffffff');
-    }
-  });
-
-  return { status: 'success', message: 'تمت تهيئة الجداول بنجاح' };
-}
-
-// جلب كافة بيانات التطبيق
+// دالة جلب البيانات الآمنة (تقرأ كافة البيانات الموجودة بالشيت بدون مسح)
 function getAllAppData() {
-  const sheetNames = ['المشاريع', 'المصروفات', 'الموظفين', 'مسير الرواتب', 'العقود والخطابات', 'وثائق الشركة', 'المستخدمين'];
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets();
   const result = {};
 
-  sheetNames.forEach(name => {
-    result[name] = getData(name);
+  sheets.forEach(sheet => {
+    const name = sheet.getName();
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      result[name] = [];
+      return;
+    }
+
+    const headers = data[0].map(h => h ? h.toString().trim() : '');
+    const rows = [];
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i].every(cell => cell === "" || cell === null)) continue;
+      let obj = {};
+      headers.forEach((h, index) => {
+        if (!h) return;
+        let val = data[i][index];
+        if (val instanceof Date) {
+          val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+        }
+        obj[h] = (val !== undefined && val !== null) ? val : "";
+      });
+      rows.push(obj);
+    }
+    result[name] = rows;
   });
 
   return result;
 }
 
-// دالة تسجيل الدخول المرنة
+// تسجيل الدخول المرن
 function checkLogin(email, password) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("المستخدمين");
-  
-  // السماح بالدخول الافتراضي لمدير النظام
   if (String(email).trim().toLowerCase() === 'admin@farran.com' && String(password).trim() === '123456') {
     return { success: true, user: { name: 'م. حسن فران', email: email, role: 'مدير النظام' } };
   }
 
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("المستخدمين");
   if (!sheet) return { success: false, message: "جدول المستخدمين غير موجود" };
 
   var data = sheet.getDataRange().getValues();
@@ -120,57 +112,37 @@ function checkLogin(email, password) {
       };
     }
   }
-  return { success: false, message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" };
+  return { success: false, message: "بيانات الدخول غير صحيحة" };
 }
 
-// جلب بيانات شيت محدد
-function getData(sheetName) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return [];
-
-  const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return [];
-
-  const headers = data[0].map(h => h ? h.toString().trim() : '');
-  const rows = data.slice(1).filter(row => row.some(cell => cell !== "" && cell !== null));
-
-  return rows.map(row => {
-    let obj = {};
-    headers.forEach((h, index) => {
-      if (!h) return;
-      let val = row[index];
-      if (val instanceof Date) {
-        val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-      }
-      obj[h] = (val !== undefined && val !== null) ? val : "";
-    });
-    return obj;
-  });
-}
-
-// حفظ أو تحديث سجل
+// إضافة أو تحديث سجل دون المساس بباقي الجداول
 function saveRecord(sheetName, record) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
-    setupDatabase();
-    sheet = ss.getSheetByName(sheetName);
+    sheet = ss.insertSheet(sheetName);
   }
 
   const data = sheet.getDataRange().getValues();
-  const headers = data[0];
+  let headers = data.length > 0 ? data[0] : [];
+
+  if (headers.length === 0) {
+    headers = Object.keys(record);
+    sheet.appendRow(headers);
+  }
 
   if (record['ID']) {
     const idIndex = headers.indexOf('ID');
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][idIndex]) === String(record['ID'])) {
-        headers.forEach((h, colIndex) => {
-          if (record[h] !== undefined) {
-            sheet.getRange(i + 1, colIndex + 1).setValue(record[h]);
-          }
-        });
-        return { success: true, message: 'تم تحديث البيانات بنجاح' };
+    if (idIndex !== -1) {
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][idIndex]) === String(record['ID'])) {
+          headers.forEach((h, colIndex) => {
+            if (record[h] !== undefined) {
+              sheet.getRange(i + 1, colIndex + 1).setValue(record[h]);
+            }
+          });
+          return { success: true, message: 'تم تحديث البيانات بنجاح' };
+        }
       }
     }
   }
@@ -225,43 +197,4 @@ function uploadFileToDrive(fileData) {
   } catch (error) {
     return { success: false, message: error.toString() };
   }
-}
-
-// بيانات لوحة التحكم
-function getDashboardData() {
-  const projects = getData('المشاريع');
-  const expenses = getData('المصروفات');
-  const docs = getData('وثائق الشركة');
-  const employees = getData('الموظفين');
-
-  let totalContractValue = 0;
-  let totalCollected = 0;
-  let totalExpenses = 0;
-
-  projects.forEach(p => {
-    totalContractValue += parseFloat(p['القيمة الاجمالية']) || 0;
-    totalCollected += parseFloat(p['المستخلص المحصل']) || 0;
-  });
-
-  expenses.forEach(e => {
-    totalExpenses += parseFloat(e['المبلغ']) || 0;
-  });
-
-  const today = new Date();
-  const expiringDocs = docs.filter(d => {
-    if (!d['تاريخ الانتهاء']) return false;
-    const exp = new Date(d['تاريخ الانتهاء']);
-    return (exp - today) / (1000 * 60 * 60 * 24) <= 30;
-  });
-
-  const expiringIqamas = employees.filter(emp => {
-    if (!emp['تاريخ انتهاء الإقامة']) return false;
-    const exp = new Date(emp['تاريخ انتهاء الإقامة']);
-    return (exp - today) / (1000 * 60 * 60 * 24) <= 30;
-  });
-
-  return {
-    stats: { totalContractValue, totalCollected, totalRemaining: totalContractValue - totalCollected, totalExpenses, projectsCount: projects.length },
-    expiringDocs, expiringIqamas, projects
-  };
 }
