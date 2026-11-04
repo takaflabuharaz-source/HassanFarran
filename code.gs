@@ -50,7 +50,6 @@ function doPost(e) {
   }
 }
 
-// تهيئة الجداول وتحديث الأعمدة
 function setupDatabase() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = [
@@ -75,7 +74,6 @@ function setupDatabase() {
   return { status: 'success', message: 'تمت تهيئة الجداول بنجاح' };
 }
 
-// دالة جلب كافة البيانات الديناميكية من جميع الشيتات
 function getAllAppData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = ss.getSheets();
@@ -89,7 +87,6 @@ function getAllAppData() {
   return result;
 }
 
-// دالة رفع الملفات إلى Google Drive وتحويل الرابط للمعاينة المباشرة
 function uploadFileToDrive(fileData) {
   try {
     const folderName = "فواتير ومستندات المؤسسة";
