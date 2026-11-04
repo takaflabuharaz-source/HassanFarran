@@ -146,14 +146,14 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
             <h2 class="text-2xl font-black">قائمة المصروفات</h2>
-            <p class="text-xs text-slate-500 font-bold mt-1">استعراض المصروفات، فلترتها حسب الفترة، وتصديرها إلى إكسل</p>
+            <p class="text-xs text-slate-500 font-bold mt-1">استعراض المصروفات، فلترتها حسب الفترة، وتصديرها إلى إكسل و PDF</p>
           </div>
           <button onclick="openNewExpenseModal()" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-blue-700 flex items-center gap-2 self-start md:self-auto">
             <i class="fa-solid fa-plus"></i> إدخال مصروف جديد
           </button>
         </div>
 
-        <!-- شريط التصفية بالتاريخ وتصدير الاكسل -->
+        <!-- شريط التصفية بالتاريخ وتصدير الاكسل و PDF -->
         <div class="bg-white p-4 rounded-2xl shadow-sm border mb-6">
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="flex flex-wrap items-center gap-3 text-sm font-bold">
@@ -168,10 +168,13 @@
               <button onclick="resetExpensesFilter()" class="text-xs text-blue-600 hover:underline">إعادة ضبط</button>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
               <span id="filtered_total_display" class="text-xs font-black bg-rose-50 text-rose-600 px-3 py-2 rounded-lg">إجمالي الفترة: 0 ر.س</span>
               <button onclick="exportExpensesToExcel()" class="bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-emerald-700 flex items-center gap-2 shadow-md">
                 <i class="fa-solid fa-file-excel"></i> تصدير إلى Excel
+              </button>
+              <button onclick="exportExpensesToPDF()" class="bg-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-rose-700 flex items-center gap-2 shadow-md">
+                <i class="fa-solid fa-file-pdf"></i> تصدير إلى PDF
               </button>
             </div>
           </div>
@@ -203,6 +206,9 @@
             <p class="text-xs text-slate-500 font-bold mt-1">متابعة العمالة، الإقامات، وتوليد كشوفات وقسائم الرواتب</p>
           </div>
           <div class="flex gap-2">
+            <button onclick="openPayrollModal()" class="bg-emerald-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-emerald-700 flex items-center gap-2 text-sm shadow-md">
+              <i class="fa-solid fa-money-check-dollar"></i> مسير الرواتب الشهري
+            </button>
             <button onclick="openNewEmployeeModal()" class="bg-blue-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-blue-700 flex items-center gap-2 text-sm">
               <i class="fa-solid fa-user-plus"></i> إضافة موظف
             </button>
@@ -305,14 +311,14 @@
   </div>
 
   <!-- ==================== المودالات ==================== -->
-  
-<!-- مودال كشف الرواتب والمسيرات -->
+
+  <!-- مودال كشف الرواتب والمسيرات -->
   <div id="payrollModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-5xl w-full p-6 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b pb-3 mb-4">
         <div>
-          <h3 class="font-black text-xl text-slate-800">كشف وتعديل الرواتب الشهرية</h3>
-          <p class="text-xs text-slate-500 font-bold">إدخال الحوافز والخصومات واحتساب صافي المستحق وتوليد السندات والمسيرات</p>
+          <h3 class="font-black text-xl text-slate-800">جدول مسير الرواتب وتعديل الاستحقاقات</h3>
+          <p class="text-xs text-slate-500 font-bold">تعديل الحوافز والاستقطاعات واحتساب صافي المستحق وتوليد الإيصالات والمسير المكتمل</p>
         </div>
         <button onclick="closeModal('payrollModal')" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
       </div>
@@ -335,13 +341,14 @@
       </div>
 
       <div class="flex justify-between items-center pt-3 border-t">
-        <span class="text-xs font-bold text-slate-500" id="payrollTotalNet">إجمالي صافي الرواتب: 0 ر.س</span>
+        <span class="text-xs font-bold text-slate-600" id="payrollTotalNet">إجمالي صافي الرواتب المستحقة: 0 ر.س</span>
         <button onclick="printAllPayrolls()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-5 py-2.5 rounded-xl text-sm flex items-center gap-2 shadow-lg">
-          <i class="fa-solid fa-print"></i> طباعة كشف كافة الرواتب (اعتماد المدير)
+          <i class="fa-solid fa-print"></i> طباعة المسير الكلي (اعتماد المدير والمدير المالي)
         </button>
       </div>
     </div>
   </div>
+
   <!-- مودال مشروع -->
   <div id="projectModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
@@ -430,7 +437,7 @@
         </div>
         <div class="flex gap-2">
           <button id="pd_btn_print" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2">
-            <i class="fa-solid fa-print"></i> طباعة التقرير الرسمي
+            <i class="fa-solid fa-print"></i> طباعة التقرير
           </button>
         </div>
       </div>
@@ -649,6 +656,7 @@
     let allOrgDocs = [];
     let allUsers = [];
     let chartInstance = null;
+    let payrollData = {};
 
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFb-UbnGeD0Eg9brh-xVuOb09mAWQanMzza9XesdWlK8eJgT8ZuHxValLm-qqHnfhhVA/exec";
 
@@ -811,6 +819,274 @@
 
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    // --- المحرك الموحد للطباعة الرسمية ---
+    function printOfficialDocument(docTitle, docNumber, bodyHtml) {
+      const currentDate = new Date().toLocaleDateString('ar-SA') + ' م (' + new Date().toISOString().slice(0, 10) + ')';
+      const printWin = window.open('', '', 'width=950,height=800');
+      
+      printWin.document.write(`
+        <html dir="rtl" lang="ar">
+        <head>
+          <title>${docTitle}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+            body { font-family: 'Cairo', sans-serif; padding: 25px; color: #0f172a; margin: 0; }
+            .paper { border: 2px solid #1e293b; padding: 30px; border-radius: 10px; min-height: 95vh; position: relative; }
+            .header-top { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 20px; }
+            .header-info { text-align: left; font-size: 13px; font-weight: bold; color: #334155; }
+            .title-box { text-align: center; margin: 20px 0; background-color: #f1f5f9; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; }
+            .footer { margin-top: 50px; border-top: 1px solid #94a3b8; padding-top: 15px; font-size: 11px; text-align: center; color: #64748b; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; font-size: 13px; }
+            th { background-color: #1e293b; color: white; }
+          </style>
+        </head>
+        <body>
+          <div class="paper">
+            <div class="header-top">
+              <div>
+                <h1 style="margin:0; font-size:20px; font-weight:900; color:#0f172a;">مؤسسة حسن خالد حسن فران للمقاولات العامة</h1>
+                <p style="margin:3px 0 0; font-size:12px; color:#475569; font-weight:bold;">المملكة العربية السعودية - السجل التجاري الرسمي</p>
+              </div>
+              <div class="header-info">
+                <div>تاريخ الطباعة: <span style="color:#0f172a;">${currentDate}</span></div>
+                <div>رقم المستند/السند: <span style="color:#2563eb;">${docNumber || 'REF-' + Math.floor(1000 + Math.random() * 9000)}</span></div>
+              </div>
+            </div>
+
+            <div class="title-box">
+              <h2 style="margin:0; font-size:18px; font-weight:900;">${docTitle}</h2>
+            </div>
+
+            <div style="min-height:450px;">
+              ${bodyHtml}
+            </div>
+
+            <div class="footer">
+              مؤسسة حسن خالد حسن فران للمقاولات العامة - المملكة العربية السعودية - البريد الإلكتروني: info@farran.com
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
+      setTimeout(() => { printWin.print(); }, 500);
+    }
+
+    // --- 1. إصلاح زر طباعة تقرير المشروع ---
+    function printProjectReport(p, pExpenses, pRemaining, netProfit) {
+      const body = `
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; font-size:13px; margin-bottom:25px;">
+          <div><strong>اسم المشروع:</strong> ${p['اسم المشروع']}</div>
+          <div><strong>كود المشروع:</strong> ${p['كود المشروع']}</div>
+          <div><strong>اسم العميل:</strong> ${p['العميل'] || '-'}</div>
+          <div><strong>موقع المشروع:</strong> ${p['الموقع'] || '-'}</div>
+          <div><strong>مدير المشروع:</strong> ${p['مدير المشروع'] || '-'}</div>
+          <div><strong>حالة المشروع:</strong> ${p['حالة المشروع'] || '-'}</div>
+        </div>
+        
+        <h3 style="margin-top:20px;">الملخص المالي للمشروع</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>القيمة الإجمالية للعقد</th>
+              <th>المستخلص المستلم (المحصل)</th>
+              <th>المتبقي من المستخلص</th>
+              <th>إجمالي المصروفات</th>
+              <th>صافي الأرباح المتوقعة</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>${(parseFloat(p['القيمة الاجمالية'])||0).toLocaleString()} ر.س</strong></td>
+              <td style="color:#10b981;"><strong>${(parseFloat(p['المستخلص المحصل'])||0).toLocaleString()} ر.س</strong></td>
+              <td style="color:#f59e0b;"><strong>${pRemaining.toLocaleString()} ر.س</strong></td>
+              <td style="color:#f43f5e;"><strong>${pExpenses.toLocaleString()} ر.س</strong></td>
+              <td style="color:${netProfit>=0 ? '#10b981':'#f43f5e'};"><strong>${netProfit.toLocaleString()} ر.س</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+      printOfficialDocument(`تقرير مالية مشروع: ${p['اسم المشروع']}`, p['كود المشروع'], body);
+    }
+
+    // --- 2. إدارة وتوليد الرواتب والمسيرات والطباعة والتوقيعات ---
+    function openPayrollModal() {
+      allEmployees.forEach(emp => {
+        const id = emp['ID'];
+        if (!payrollData[id]) { payrollData[id] = { bonus: 0, deduction: 0 }; }
+      });
+      renderPayrollRows();
+      openModal('payrollModal');
+    }
+
+    function renderPayrollRows() {
+      const tbody = document.getElementById('payrollTableBody');
+      tbody.innerHTML = '';
+      let grandTotalNet = 0;
+
+      allEmployees.forEach(emp => {
+        const id = emp['ID'];
+        const base = parseFloat(emp['الراتب الأساسي']) || 0;
+        const bonus = parseFloat(payrollData[id].bonus) || 0;
+        const deduction = parseFloat(payrollData[id].deduction) || 0;
+        const net = base + bonus - deduction;
+        grandTotalNet += net;
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-3 font-bold text-blue-600">${emp['رقم الموظف']}</td>
+            <td class="p-3 font-bold">${emp['اسم الموظف']}</td>
+            <td class="p-3 font-bold text-slate-700">${base.toLocaleString()} ر.س</td>
+            <td class="p-3"><input type="number" value="${bonus}" onchange="updatePayrollCalc('${id}', 'bonus', this.value)" class="w-28 border rounded p-1 text-xs font-bold text-emerald-600 outline-none"></td>
+            <td class="p-3"><input type="number" value="${deduction}" onchange="updatePayrollCalc('${id}', 'deduction', this.value)" class="w-28 border rounded p-1 text-xs font-bold text-rose-600 outline-none"></td>
+            <td class="p-3 font-black text-blue-700">${net.toLocaleString()} ر.س</td>
+            <td class="p-3 text-center">
+              <button onclick="printSinglePayVoucher('${id}')" class="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 mx-auto">
+                <i class="fa-solid fa-print"></i> طباعة سند صرف
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+      document.getElementById('payrollTotalNet').innerText = `إجمالي صافي الرواتب المستحقة: ${grandTotalNet.toLocaleString()} ر.س`;
+    }
+
+    function updatePayrollCalc(id, field, value) {
+      if (!payrollData[id]) payrollData[id] = { bonus: 0, deduction: 0 };
+      payrollData[id][field] = parseFloat(value) || 0;
+      renderPayrollRows();
+    }
+
+    function printSinglePayVoucher(empId) {
+      const emp = allEmployees.find(e => String(e['ID']) === String(empId));
+      if (!emp) return;
+
+      const base = parseFloat(emp['الراتب الأساسي']) || 0;
+      const bonus = parseFloat(payrollData[empId]?.bonus) || 0;
+      const deduction = parseFloat(payrollData[empId]?.deduction) || 0;
+      const net = base + bonus - deduction;
+      const docNo = 'PAY-' + emp['رقم الموظف'] + '-' + new Date().toISOString().slice(0,7);
+
+      const body = `
+        <p style="font-size:14px; line-height:1.8;">نقر نحن مؤسسة حسن خالد حسن فران للمقاولات العامة بأنه قد تم تسليم الموظف الموضحة بياناته أدناه صافي المستحق المالي للشهـر الجاري.</p>
+        
+        <table style="margin-top:20px;">
+          <thead>
+            <tr>
+              <th>رقم الموظف</th>
+              <th>اسم الموظف</th>
+              <th>رقم الهوية / الإقامة</th>
+              <th>المهنة</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${emp['رقم الموظف']}</td>
+              <td><strong>${emp['اسم الموظف']}</strong></td>
+              <td>${emp['رقم الهوية'] || '-'}</td>
+              <td>${emp['المهنة'] || '-'}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4 style="margin-top:25px; margin-bottom:10px;">تفاصيل الاستحقاق:</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>الراتب الأساسي</th>
+              <th>الحوافز والمكافآت</th>
+              <th>الخصومات والاستقطاعات</th>
+              <th>الراتب الصافي المستحق</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${base.toLocaleString()} ر.س</td>
+              <td style="color:#10b981;">+ ${bonus.toLocaleString()} ر.س</td>
+              <td style="color:#f43f5e;">- ${deduction.toLocaleString()} ر.س</td>
+              <td style="font-size:15px; font-weight:bold; color:#2563eb;">${net.toLocaleString()} ر.س</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:80px; display:flex; justify-content:space-between; text-align:center; padding:0 30px;">
+          <div>
+            <p style="font-weight:bold; margin-bottom:50px;">توقيع المحاسب المسؤول</p>
+            <p>_______________________</p>
+          </div>
+          <div>
+            <p style="font-weight:bold; margin-bottom:50px;">توقيع واستلام الموظف</p>
+            <p>_______________________</p>
+          </div>
+        </div>
+      `;
+      printOfficialDocument(`سند صرف راتب شهر (${new Date().toLocaleDateString('ar-SA', {month:'long', year:'numeric'})})`, docNo, body);
+    }
+
+    function printAllPayrolls() {
+      let rowsHtml = '';
+      let grandNet = 0;
+
+      allEmployees.forEach((emp, index) => {
+        const id = emp['ID'];
+        const base = parseFloat(emp['الراتب الأساسي']) || 0;
+        const bonus = parseFloat(payrollData[id]?.bonus) || 0;
+        const deduction = parseFloat(payrollData[id]?.deduction) || 0;
+        const net = base + bonus - deduction;
+        grandNet += net;
+
+        rowsHtml += `
+          <tr>
+            <td style="text-align:center;">${index + 1}</td>
+            <td>${emp['رقم الموظف']}</td>
+            <td><strong>${emp['اسم الموظف']}</strong></td>
+            <td>${base.toLocaleString()} ر.س</td>
+            <td>${bonus.toLocaleString()} ر.س</td>
+            <td>${deduction.toLocaleString()} ر.س</td>
+            <td><strong>${net.toLocaleString()} ر.س</strong></td>
+            <td style="height:35px;"></td>
+          </tr>
+        `;
+      });
+
+      const body = `
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>رقم الموظف</th>
+              <th>اسم الموظف</th>
+              <th>الراتب الأساسي</th>
+              <th>الحوافز</th>
+              <th>الخصومات</th>
+              <th>الصافي المستحق</th>
+              <th>توقيع الاستلام</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+            <tr style="background-color:#f8fafc; font-weight:bold;">
+              <td colspan="6" style="text-align:left;">إجمالي مسير الرواتب:</td>
+              <td colspan="2" style="color:#10b981; font-size:14px;">${grandNet.toLocaleString()} ريال سعودي</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:70px; display:flex; justify-content:space-between; text-align:center; padding:0 50px;">
+          <div>
+            <p style="font-weight:bold; margin-bottom:50px;">المدير المالي</p>
+            <p>_______________________</p>
+          </div>
+          <div>
+            <p style="font-weight:bold; margin-bottom:50px;">مدير المؤسسة</p>
+            <p>م. حسن خالد حسن فران</p>
+          </div>
+        </div>
+      `;
+      printOfficialDocument(`كشف مسير رواتب الموظفين الشامل`, 'PAYROLL-ALL-' + new Date().toISOString().slice(0,7), body);
+    }
 
     // --- Dashboard & Charts ---
     function renderDashboard() {
@@ -1068,7 +1344,7 @@
       }
     }
 
-    // --- قسم المصروفات والفلترة بالتواريخ والتصدير إلى Excel ---
+    // --- قسم المصروفات والفلترة بالتواريخ والتصدير إلى Excel و PDF ---
     function renderExpensesTable() {
       const select = document.getElementById('e_projectCode');
       select.innerHTML = '<option value="">اختر المشروع</option>';
@@ -1142,7 +1418,7 @@
       }
 
       let csvContent = "\uFEFF"; // إضافة UTF-BOM لحفظ اللغة العربية بشكل صحيح
-      csvContent += "كود المشروع,بند المصروف,المبلغ (ر.س),التاريخ,ملاحظات,رابط الفاتورة\n";
+      csvContent += "كود المشروع,بند المصروف,المبلغ (ر.س),التاريخ,ملاحظات\n";
 
       filteredExpenses.forEach(e => {
         const row = [
@@ -1150,8 +1426,7 @@
           `"${e['بند المصروف'] || ''}"`,
           `"${e['المبلغ'] || '0'}"`,
           `"${e['التاريخ'] || ''}"`,
-          `"${(e['ملاحظات'] || '').replace(/"/g, '""')}"`,
-          `"${e['رابط الفاتورة'] || ''}"`
+          `"${(e['ملاحظات'] || '').replace(/"/g, '""')}"`
         ];
         csvContent += row.join(",") + "\n";
       });
@@ -1160,10 +1435,59 @@
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `تقرير_المصروفات_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.setAttribute("download", `جدول_المصروفات_${new Date().toISOString().slice(0, 10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    }
+
+    function exportExpensesToPDF() {
+      if (!filteredExpenses || filteredExpenses.length === 0) {
+        alert("لا توجد مصروفات متاحة للتصدير.");
+        return;
+      }
+
+      let rowsHtml = '';
+      let totalAmount = 0;
+
+      filteredExpenses.forEach((e, idx) => {
+        const amt = parseFloat(e['المبلغ']) || 0;
+        totalAmount += amt;
+        rowsHtml += `
+          <tr>
+            <td style="text-align:center;">${idx + 1}</td>
+            <td>${e['كود المشروع'] || '-'}</td>
+            <td><strong>${e['بند المصروف'] || '-'}</strong></td>
+            <td>${amt.toLocaleString()} ر.س</td>
+            <td>${e['التاريخ'] || '-'}</td>
+            <td>${e['ملاحظات'] || '-'}</td>
+          </tr>
+        `;
+      });
+
+      const body = `
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>كود المشروع</th>
+              <th>بند المصروف</th>
+              <th>المبلغ</th>
+              <th>التاريخ</th>
+              <th>الملاحظات</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+            <tr style="background-color:#f8fafc; font-weight:bold;">
+              <td colspan="3" style="text-align:left;">الإجمالي النهائي للمصروفات:</td>
+              <td colspan="3" style="color:#f43f5e; font-size:14px;">${totalAmount.toLocaleString()} ريال سعودي</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+
+      printOfficialDocument(`تقرير المصروفات المالي المصفى`, 'EXP-' + new Date().toISOString().slice(0, 10), body);
     }
 
     function openNewExpenseModal() {
@@ -1384,7 +1708,7 @@
       }
     }
 
-    // --- العقود والخطابات (مع رفع ملفات PDF والصور بشكل موثوق) ---
+    // --- العقود والخطابات ---
     function renderLettersTable() {
       const tbody = document.getElementById('lettersTableBody');
       tbody.innerHTML = '';
@@ -1510,7 +1834,7 @@
       }
     }
 
-    // --- وثائق المؤسسة (مُحدَّثة بإضافة أزرار الطباعة والمعاينة الكاملة) ---
+    // --- وثائق المؤسسة ---
     function renderOrgDocsCards() {
       const container = document.getElementById('orgDocsCardsContainer');
       container.innerHTML = '';
@@ -1540,12 +1864,10 @@
 
         const fileUrl = d['رابط المستند'] || d['رابط الوثيقة'] || '';
         
-        // زر معاينة المستند
         const previewBtn = fileUrl 
           ? `<a href="${fileUrl}" target="_blank" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold transition flex items-center gap-1"><i class="fa-solid fa-eye"></i> معاينة</a>`
           : `<span class="text-xs text-slate-400 font-bold">بدون ملف</span>`;
 
-        // زر طباعة بيانات الوثيقة
         const printSingleBtn = `<button onclick="printSingleOrgDoc('${d['ID']}')" title="طباعة الوثيقة" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold transition flex items-center gap-1"><i class="fa-solid fa-print"></i> طباعة</button>`;
 
         container.innerHTML += `
@@ -1586,7 +1908,7 @@
           <title>طباعة وثيقة - ${d['اسم الوثيقة']}</title>
           <style>
             body { font-family: 'Cairo', sans-serif; padding: 40px; color: #1e293b; text-align: center; }
-            .box { border: 2px solid #0f172a; border-radius: 12px; padding: 30px; max-w: 600px; margin: 0 auto; }
+            .box { border: 2px solid #0f172a; border-radius: 12px; padding: 30px; max-width: 600px; margin: 0 auto; }
             h1 { color: #0f172a; font-size: 22px; margin-bottom: 20px; }
             .info { text-align: right; font-size: 16px; margin-bottom: 15px; line-height: 1.8; }
             .footer { margin-top: 30px; font-size: 12px; color: #64748b; }
