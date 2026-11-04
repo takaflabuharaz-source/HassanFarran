@@ -305,7 +305,43 @@
   </div>
 
   <!-- ==================== المودالات ==================== -->
+  
+<!-- مودال كشف الرواتب والمسيرات -->
+  <div id="payrollModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-5xl w-full p-6 max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b pb-3 mb-4">
+        <div>
+          <h3 class="font-black text-xl text-slate-800">كشف وتعديل الرواتب الشهرية</h3>
+          <p class="text-xs text-slate-500 font-bold">إدخال الحوافز والخصومات واحتساب صافي المستحق وتوليد السندات والمسيرات</p>
+        </div>
+        <button onclick="closeModal('payrollModal')" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+      </div>
 
+      <div class="overflow-x-auto border rounded-xl mb-4">
+        <table class="w-full text-right text-sm">
+          <thead class="bg-slate-900 text-white text-xs">
+            <tr>
+              <th class="p-3">رقم الموظف</th>
+              <th class="p-3">اسم الموظف</th>
+              <th class="p-3">الراتب الأساسي</th>
+              <th class="p-3">الحوافز / المكافآت (ر.س)</th>
+              <th class="p-3">الخصومات (ر.س)</th>
+              <th class="p-3">الراتب المستحق</th>
+              <th class="p-3 text-center">الإجراءات والطباعة</th>
+            </tr>
+          </thead>
+          <tbody id="payrollTableBody" class="divide-y"></tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-between items-center pt-3 border-t">
+        <span class="text-xs font-bold text-slate-500" id="payrollTotalNet">إجمالي صافي الرواتب: 0 ر.س</span>
+        <button onclick="printAllPayrolls()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-5 py-2.5 rounded-xl text-sm flex items-center gap-2 shadow-lg">
+          <i class="fa-solid fa-print"></i> طباعة كشف كافة الرواتب (اعتماد المدير)
+        </button>
+      </div>
+    </div>
+  </div>
   <!-- مودال مشروع -->
   <div id="projectModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
@@ -394,7 +430,7 @@
         </div>
         <div class="flex gap-2">
           <button id="pd_btn_print" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2">
-            <i class="fa-solid fa-print"></i> طباعة التقرير
+            <i class="fa-solid fa-print"></i> طباعة التقرير الرسمي
           </button>
         </div>
       </div>
